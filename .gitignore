@@ -85,7 +85,7 @@ patches
 .settings
 
 # VSCode stuff
-.vscode
+#.vscode
 
 # Emacs temp files
 *~

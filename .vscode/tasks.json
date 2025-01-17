@@ -1,0 +1,88 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "MSYS Bootstrap",
+            "type": "shell",
+            "command": "./bootstrap",
+            "args": [
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "MSYS Configure",
+            "type": "shell",
+            "command": "'./configure CFLAGS=\"-ggdb -O0 -g3\" --enable-ftdi --enable-static --disable-werror'",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            } 
+        },
+        {
+            "label": "MSYS Make",
+            "type": "shell",
+            "command": "'make -j12'",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "hide": true
+        },
+        {
+            "label": "MSYS Install",
+            "type": "shell",
+            "command": "'make install'",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "hide": true
+        },
+        {
+            "label": "MSYS Clean",
+            "type": "shell",
+            "command": "'make distclean'",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
+            "label": "Build",
+            "dependsOn":[
+                "MSYS Make",
+                //"MSYS Install",
+            ],
+            "dependsOrder": "sequence",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ],
+    "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {},
+                "shell": {
+                    "executable": "C:\\msys64\\msys2_shell.cmd",
+                    "args": [
+                        "-defterm",
+                        "-here",
+                        "-no-start",
+                        "-mingw64",
+                        "-c",
+                    ]
+                }
+            },
+    "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+    }
+}

@@ -101,6 +101,7 @@ static struct target_type *target_types[] = {
 	&aarch64_target,
 	&armv8r_target,
 	&mips_mips64_target,
+	&idm51_target,
 	NULL,
 };
 
@@ -108,10 +109,10 @@ struct target *all_targets;
 static struct target_event_callback *target_event_callbacks;
 static struct target_timer_callback *target_timer_callbacks;
 static int64_t target_timer_next_event_value;
-static OOCD_LIST_HEAD(target_reset_callback_list);
-static OOCD_LIST_HEAD(target_trace_callback_list);
+static LIST_HEAD(target_reset_callback_list);
+static LIST_HEAD(target_trace_callback_list);
 static const int polling_interval = TARGET_DEFAULT_POLLING_INTERVAL;
-static OOCD_LIST_HEAD(empty_smp_targets);
+static LIST_HEAD(empty_smp_targets);
 
 enum nvp_assert {
 	NVP_DEASSERT,
@@ -5848,7 +5849,6 @@ static int target_create(struct jim_getopt_info *goi)
 		free(target->gdb_port_override);
 		free(target->trace_info);
 		free(target->type);
-		free(target->private_config);
 		free(target);
 		return e;
 	}
@@ -5866,7 +5866,6 @@ static int target_create(struct jim_getopt_info *goi)
 		free(target->gdb_port_override);
 		free(target->trace_info);
 		free(target->type);
-		free(target->private_config);
 		free(target);
 		return JIM_ERR;
 	}
@@ -5880,7 +5879,6 @@ static int target_create(struct jim_getopt_info *goi)
 			free(target->gdb_port_override);
 			free(target->trace_info);
 			free(target->type);
-			free(target->private_config);
 			free(target);
 			return JIM_ERR;
 		}

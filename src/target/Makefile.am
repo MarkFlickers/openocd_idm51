@@ -20,6 +20,7 @@ noinst_LTLIBRARIES += %D%/libtarget.la
 	$(AVR32_SRC) \
 	$(MIPS32_SRC) \
 	$(STM8_SRC) \
+	$(IDM51_SRC) \
 	$(INTEL_IA32_SRC) \
 	$(ESIRISC_SRC) \
         $(ARC_SRC) \
@@ -135,6 +136,10 @@ MIPS64_SRC = \
 
 STM8_SRC = \
 	%D%/stm8.c
+	
+IDM51_SRC = \
+	%D%/idm51.c \
+	%D%/idm51_once.c 
 
 INTEL_IA32_SRC = \
 	%D%/quark_x10xx.c \
@@ -201,6 +206,8 @@ ARC_SRC = \
 	%D%/etm.h \
 	%D%/etm_dummy.h \
 	%D%/arm_tpiu_swo.h \
+	%D%/idm51.h \
+	%D%/idm51_once.h \
 	%D%/image.h \
 	%D%/mips32.h \
 	%D%/mips64.h \
