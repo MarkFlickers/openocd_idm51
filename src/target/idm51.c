@@ -436,9 +436,9 @@ static int idm51_init_arch_info(struct target *target, struct idm51_common *idm5
 	idm51->ext_flash.part_num = calloc(20, sizeof(char));
 	idm51->ext_flash.status_reg = 0xFF;
 
-	idm51->spi_load_en = true;
+	//idm51->spi_load_en = true;
 	idm51->is_load_done = false;
-	idm51->is_load_enabled = true;
+	idm51->is_load_enabled = false;
 
 	idm51->read_core_reg = idm51_read_core_reg;
 	idm51->write_core_reg = idm51_write_core_reg;
@@ -1228,7 +1228,7 @@ static int idm51_assert_reset(struct target *target)
 {
 	int err = ERROR_OK;
 	struct idm51_common *idm51 = target_to_idm51(target);
-	uint8_t spi_load_en = ((uint8_t)(idm51 -> spi_load_en)) & 1;
+	uint8_t spi_load_en = ((uint8_t)(idm51 -> is_load_enabled)) & 1;
 
 	LOG_INFO("%s", __func__);
 
@@ -1984,8 +1984,8 @@ COMMAND_HANDLER(idm51_reset)
 
 	if (CMD_ARGC > 0)
 	{
-		if(strcmp("enable_spi_load", CMD_ARGV[0])) idm51->spi_load_en = 0;
-		else idm51->spi_load_en = 1;
+		if(strcmp("enable_spi_load", CMD_ARGV[0]) == 0) idm51->is_load_enabled = true;
+		else idm51->is_load_enabled = false;
 	}
 
 	

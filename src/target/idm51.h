@@ -182,7 +182,7 @@ struct idm51_common {
 	//unsigned int bp_pc_num;
 
 	//bool DEBUG_REQUEST;
-	bool spi_load_en;
+	//bool spi_load_en;
   bool is_load_done;
   bool is_load_enabled;
 

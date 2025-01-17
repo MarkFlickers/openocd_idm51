@@ -132,14 +132,16 @@ int idm51_read_core_resource(struct target *target, uint64_t cmd, uint32_t * dat
 
 int idm51_read_status(struct target *target, uint32_t * data)
 {
+	struct idm51_common *idm51 = target_to_idm51(target);
+
 	int err = idm51_read_core_resource(target, READST, data);
 	//struct idm51_common *idm51 = target_to_idm51(target);
 	//uint32_t temp_data = *data;
 
 	// if((temp_data >> 15) & 1) target -> state = TARGET_HALTED;
 	// if((temp_data >> 14) & 1) target -> state = TARGET_RESET;
-	// idm51->is_load_done = (temp_data >> 13) & 1;
-	// idm51->is_load_enabled = (temp_data >> 12) & 1;
+	idm51->is_load_done = (*data >> 13) & 1;
+	idm51->is_load_enabled = (*data >> 12) & 1;
 
 	// for(int i = 0; i < 8; i++)
 	// {
