@@ -13,8 +13,8 @@
 #include "idm51.h"
 #include "idm51_once.h"
 
-
-static const struct {
+static const struct
+{
 	unsigned id;
 	const char *name;
 	unsigned bits;
@@ -77,7 +77,7 @@ static int idm51_read_register(struct target *target, int num, int force);
 static int idm51_write_register(struct target *target, int num, int force);
 
 static int idm51_debug_read_register(struct target *target, unsigned num, uint32_t *data);
-//static int idm51_debug_write_register(struct target *target, unsigned num, uint32_t data);
+// static int idm51_debug_write_register(struct target *target, unsigned num, uint32_t data);
 
 static int idm51_read_memory(struct target *target, target_addr_t address, uint32_t size, uint32_t count, uint8_t *buffer);
 
@@ -85,32 +85,39 @@ int idm51_print_status(struct target *target)
 {
 	char Core_Status_String[256] = "status:";
 	char Trigg_String[256] = "active triggers:";
-	//uint8_t first = 1;
+	// uint8_t first = 1;
 
 	uint32_t status_reg;
 	int err = ERROR_OK;
 
 	struct idm51_common *idm51 = target_to_idm51(target);
 	err = idm51_read_status(target, &status_reg);
-	
-	if (err != ERROR_OK) return err;
 
-	if ((status_reg >> 15) & 1) snprintf(Core_Status_String, sizeof(Core_Status_String), "%s %s", Core_Status_String, "Halted");
-	else snprintf(Core_Status_String, sizeof(Core_Status_String), "%s %s", Core_Status_String, "Running");
-	if ((status_reg >> 14) & 1) snprintf(Core_Status_String, sizeof(Core_Status_String), "%s, %s", Core_Status_String, "In Reset");
-	if (idm51->is_load_enabled) snprintf(Core_Status_String, sizeof(Core_Status_String), "%s, %s", Core_Status_String, "SPI Load Enabled");
-	if (idm51->is_load_done) snprintf(Core_Status_String, sizeof(Core_Status_String), "%s, %s", Core_Status_String, "Load Done");
+	if (err != ERROR_OK)
+		return err;
+
+	if ((status_reg >> 15) & 1)
+		snprintf(Core_Status_String, sizeof(Core_Status_String), "%s %s", Core_Status_String, "Halted");
+	else
+		snprintf(Core_Status_String, sizeof(Core_Status_String), "%s %s", Core_Status_String, "Running");
+	if ((status_reg >> 14) & 1)
+		snprintf(Core_Status_String, sizeof(Core_Status_String), "%s, %s", Core_Status_String, "In Reset");
+	if (idm51->is_load_enabled)
+		snprintf(Core_Status_String, sizeof(Core_Status_String), "%s, %s", Core_Status_String, "SPI Load Enabled");
+	if (idm51->is_load_done)
+		snprintf(Core_Status_String, sizeof(Core_Status_String), "%s, %s", Core_Status_String, "Load Done");
 
 	for (int i = 0; i < 8; i++)
 	{
-		//if(idm51->breakpoints[i].is_bp_used)
+		// if(idm51->breakpoints[i].is_bp_used)
 		if (status_reg & (1 << i))
 		{
 			snprintf(Trigg_String, sizeof(Trigg_String), "%s %d,", Trigg_String, i);
 		}
 	}
-	if (status_reg & BP_ARE_USED) Trigg_String[strlen(Trigg_String) - 1] = '\0';
-	
+	if (status_reg & BP_ARE_USED)
+		Trigg_String[strlen(Trigg_String) - 1] = '\0';
+
 	LOG_INFO("%s", Core_Status_String);
 	LOG_INFO("%s", Trigg_String);
 
@@ -118,9 +125,9 @@ int idm51_print_status(struct target *target)
 }
 
 static int idm51_get_gdb_reg_list(struct target *target,
-	struct reg **reg_list[],
-	int *reg_list_size,
-	enum target_register_class reg_class)
+								  struct reg **reg_list[],
+								  int *reg_list_size,
+								  enum target_register_class reg_class)
 {
 	int i;
 	struct idm51_common *idm51 = target_to_idm51(target);
@@ -215,9 +222,9 @@ static void idm51_build_reg_cache(struct target *target)
 
 	struct reg_cache **cache_p = register_get_last_cache_p(&target->reg_cache);
 	struct reg_cache *cache = malloc(sizeof(struct reg_cache));
-	struct reg *reg_list = calloc(MAX_REGS , sizeof(struct reg));
+	struct reg *reg_list = calloc(MAX_REGS, sizeof(struct reg));
 	struct idm51_core_reg *arch_info = malloc(
-			sizeof(struct idm51_core_reg) * (MAX_REGS));
+		sizeof(struct idm51_core_reg) * (MAX_REGS));
 	int i;
 
 	/* Build the process context cache */
@@ -238,9 +245,8 @@ static void idm51_build_reg_cache(struct target *target)
 		arch_info[i].target = target;
 		arch_info[i].idm51_common = idm51;
 
-
 		reg_list[i].name = idm51_regs[i].name;
-		reg_list[i].size = idm51_regs[i].bits; //32
+		reg_list[i].size = idm51_regs[i].bits; // 32
 		reg_list[i].value = calloc(1, 4);
 		reg_list[i].dirty = 0;
 		reg_list[i].valid = 0;
@@ -250,21 +256,21 @@ static void idm51_build_reg_cache(struct target *target)
 	}
 }
 
-
 static int idm51_reg_read(struct target *target, uint32_t eame, uint32_t *data)
 {
-	//PC
+	// PC
 	int err = ERROR_OK;
-	if(eame == idm51_regs[PC_REGNUM].eame)
+	if (eame == idm51_regs[PC_REGNUM].eame)
 	{
 		struct idm51_common *idm51 = target_to_idm51(target);
 		err = idm51_read_core_resource(target, READPRCNT, data);
-		if(err != ERROR_OK) 
+		if (err != ERROR_OK)
 		{
 			*data = NO_ADDRESS;
 			idm51->triggered_pc = NO_ADDRESS;
 		}
-		else idm51->triggered_pc = *data - 1;
+		else
+			idm51->triggered_pc = *data - 1;
 		// if(	idm51->triggered_pc != NONE_ADR)
 		// 	*data = idm51->triggered_pc;
 		// else
@@ -293,9 +299,10 @@ static int idm51_read_register(struct target *target, int num, int force)
 	if (force)
 		idm51->core_cache->reg_list[num].valid = false;
 
-	if (!idm51->core_cache->reg_list[num].valid) {
+	if (!idm51->core_cache->reg_list[num].valid)
+	{
 		arch_info = idm51->core_cache->reg_list[num].arch_info;
-	
+
 		err = idm51_reg_read(target, arch_info->eame, &data);
 		if (err == ERROR_OK)
 		{
@@ -328,11 +335,12 @@ static int idm51_write_register(struct target *target, int num, int force)
 	if (force)
 		idm51->core_cache->reg_list[num].dirty = 1;
 
-	if (idm51->core_cache->reg_list[num].dirty) {
+	if (idm51->core_cache->reg_list[num].dirty)
+	{
 		arch_info = idm51->core_cache->reg_list[num].arch_info;
 
 		idm51->write_core_reg(target, num);
-		err = idm51_reg_write(target,arch_info->eame,idm51->core_regs[num]);
+		err = idm51_reg_write(target, arch_info->eame, idm51->core_regs[num]);
 	}
 
 	return err;
@@ -340,15 +348,17 @@ static int idm51_write_register(struct target *target, int num, int force)
 
 static int idm51_debug_read_register(struct target *target, unsigned num, uint32_t *data)
 {
-	int err = ERROR_OK,i;
+	int err = ERROR_OK, i;
 
-	for (i = 0; ; i++)
+	for (i = 0;; i++)
 	{
-		if (idm51_regs[i].id == num) break ;
-		if (idm51_regs[i].id == FINAL) break ;
+		if (idm51_regs[i].id == num)
+			break;
+		if (idm51_regs[i].id == FINAL)
+			break;
 	}
 
-	if((idm51_regs[i].id == FINAL))
+	if ((idm51_regs[i].id == FINAL))
 	{
 		LOG_ERROR("Error, no reg %d in idm51_regs[]", num);
 		return ERROR_COMMAND_SYNTAX_ERROR;
@@ -359,7 +369,7 @@ static int idm51_debug_read_register(struct target *target, unsigned num, uint32
 	return err;
 }
 
-//static int idm51_debug_write_register(struct target *target, unsigned num, uint32_t data)
+// static int idm51_debug_write_register(struct target *target, unsigned num, uint32_t data)
 //{
 //	int err = ERROR_OK,i;
 //
@@ -378,15 +388,15 @@ static int idm51_debug_read_register(struct target *target, unsigned num, uint32
 //	err = idm51_reg_write(target, idm51_regs[i].eame, data);
 //
 //	return err;
-//}
-
+// }
 
 static int idm51_save_context(struct target *target)
 {
 	int err = ERROR_OK;
 	struct idm51_common *idm51 = target_to_idm51(target);
 
-	for (int i = 0; i < idm51->idm51_num_regs; i++) {
+	for (int i = 0; i < idm51->idm51_num_regs; i++)
+	{
 		err = idm51_read_register(target, i, true);
 		if (err != ERROR_OK)
 			break;
@@ -402,7 +412,8 @@ static int idm51_restore_context(struct target *target, int force)
 
 	idm51->triggered_pc = NONE_ADR;
 
-	for (i = 0; i < idm51->idm51_num_regs; i++) {
+	for (i = 0; i < idm51->idm51_num_regs; i++)
+	{
 		err = idm51_write_register(target, i, force);
 		if (err != ERROR_OK)
 			break;
@@ -418,12 +429,12 @@ static int idm51_init_arch_info(struct target *target, struct idm51_common *idm5
 	idm51->jtag_info.tap = target->tap;
 	idm51->idm51_num_regs = IDM51_NUM_REGS;
 
-	idm51->imemstart = MEM_IMEMX_ADDR; 
-  	idm51->imemend = MEM_IMEMX_ADDR + MEM_IMEMX_SIZE - 1;
-	idm51->dmemxstart = MEM_DMEMX_ADDR; 
-  	idm51->dmemxend = MEM_DMEMX_ADDR + MEM_DMEMX_SIZE - 1;
-  	idm51->dmemstart = MEM_DMEM_ADDR; 
-  	idm51->dmemend = MEM_DMEM_ADDR + MEM_DMEM_SIZE - 1; 
+	idm51->imemstart = MEM_IMEMX_ADDR;
+	idm51->imemend = MEM_IMEMX_ADDR + MEM_IMEMX_SIZE - 1;
+	idm51->dmemxstart = MEM_DMEMX_ADDR;
+	idm51->dmemxend = MEM_DMEMX_ADDR + MEM_DMEMX_SIZE - 1;
+	idm51->dmemstart = MEM_DMEM_ADDR;
+	idm51->dmemend = MEM_DMEM_ADDR + MEM_DMEM_SIZE - 1;
 
 	idm51->bp_scanned = false;
 	idm51->breakpoints = NULL;
@@ -435,18 +446,18 @@ static int idm51_init_arch_info(struct target *target, struct idm51_common *idm5
 
 	idm51->ext_flash.mem_type = 0;
 	idm51->ext_flash.capactiy = 0;
-	
+
 	idm51->ext_flash.status_reg = 0xFF;
 
 	idm51->ext_flash.bytes_erased = 0;
 
-	//idm51->spi_load_en = true;
+	// idm51->spi_load_en = true;
 	idm51->is_load_done = false;
 	idm51->is_load_enabled = false;
 
 	idm51->read_core_reg = idm51_read_core_reg;
 	idm51->write_core_reg = idm51_write_core_reg;
-	
+
 	return ERROR_OK;
 }
 
@@ -487,15 +498,15 @@ static int idm51_target_create(struct target *target, Jim_Interp *interp)
 	idm51_init_arch_info(target, idm51);
 	idm51_configure_break_unit(target);
 
-	//memset(idm51->idm51_breakpoints.Is_BP_Active, 0, BPOINTS_AMOUNT * sizeof(idm51->idm51_breakpoints.Is_BP_Active[0]));
-	//memset(idm51->idm51_breakpoints.BP_Address, 0, BPOINTS_AMOUNT * sizeof(idm51->idm51_breakpoints.BP_Address[0]));
+	// memset(idm51->idm51_breakpoints.Is_BP_Active, 0, BPOINTS_AMOUNT * sizeof(idm51->idm51_breakpoints.Is_BP_Active[0]));
+	// memset(idm51->idm51_breakpoints.BP_Address, 0, BPOINTS_AMOUNT * sizeof(idm51->idm51_breakpoints.BP_Address[0]));
 
-	//idm51->bp_activ_map = 0;
-	//idm51->bp_pc_num = 6;
-	//idm51->triggered_pc = NONE_ADR;
+	// idm51->bp_activ_map = 0;
+	// idm51->bp_pc_num = 6;
+	// idm51->triggered_pc = NONE_ADR;
 
-	//idm51->DEBUG_REQUEST = false;
-	//idm51->spi_load_en = true;
+	// idm51->DEBUG_REQUEST = false;
+	// idm51->spi_load_en = true;
 
 	return ERROR_OK;
 }
@@ -514,7 +525,7 @@ static int idm51_examine_debug_reason(struct target *target)
 	idm51->triggered_pc = current_pc - 1; // Locate last executed instruction
 
 	err = idm51_read_status(target, &status_reg);
-	//if (err != ERROR_OK)
+	// if (err != ERROR_OK)
 	//	return err;
 
 	if ((target->debug_reason != DBG_REASON_DBGRQ) && (target->debug_reason != DBG_REASON_SINGLESTEP))
@@ -525,7 +536,7 @@ static int idm51_examine_debug_reason(struct target *target)
 		if (status_reg & STATE_IN_RESET)
 			/* halted on reset */
 			target->debug_reason = DBG_REASON_UNDEFINED;
-		
+
 		else if (status_reg & BP_ARE_USED)
 		{
 			/* we have halted on a breakpoint */
@@ -573,15 +584,15 @@ static int idm51_core_reset(struct target *target, uint64_t _sig)
 {
 	int err = ERROR_OK;
 
-	if(_sig == 0)
+	if (_sig == 0)
 	{
-		err = idm51_write_core_resource(target,RST_OFF,0,0,NULL);
+		err = idm51_write_core_resource(target, RST_OFF, 0, 0, NULL);
 		if (err != ERROR_OK)
 			return err;
 	}
 	else
 	{
-		err = idm51_write_core_resource(target,RST_ON,0,0,NULL);
+		err = idm51_write_core_resource(target, RST_ON, 0, 0, NULL);
 		if (err != ERROR_OK)
 			return err;
 	}
@@ -596,12 +607,12 @@ static int idm51_core_step(struct target *target)
 {
 	int err = ERROR_OK;
 
-	err = idm51_write_core_resource(target,STEP,0,0,NULL);
+	err = idm51_write_core_resource(target, STEP, 0, 0, NULL);
 	if (err != ERROR_OK)
 		return err;
 
 	LOG_INFO("%s", "Core Step task");
-	//err = idm51_print_status(target);
+	// err = idm51_print_status(target);
 
 	return err;
 }
@@ -610,7 +621,7 @@ static int idm51_core_halt(struct target *target)
 {
 	int err = ERROR_OK;
 
-	err = idm51_write_core_resource(target,HALT,0,0,NULL);
+	err = idm51_write_core_resource(target, HALT, 0, 0, NULL);
 	if (err != ERROR_OK)
 		return err;
 
@@ -624,7 +635,7 @@ static int idm51_core_resume(struct target *target)
 {
 	int err = ERROR_OK;
 
-	err = idm51_write_core_resource(target,RUN,0,0,NULL);
+	err = idm51_write_core_resource(target, RUN, 0, 0, NULL);
 	if (err != ERROR_OK)
 		return err;
 
@@ -639,10 +650,10 @@ static int idm51_core_resume(struct target *target)
 static int idm51_debug_entry(struct target *target)
 {
 	int err = ERROR_OK;
-	//int midres = STATE_RUN;
-	//uint32_t data = 0, data1 = 0;
-//	uint64_t out_data;
-	//LOG_DEBUG("%s", __func__);
+	// int midres = STATE_RUN;
+	// uint32_t data = 0, data1 = 0;
+	//	uint64_t out_data;
+	// LOG_DEBUG("%s", __func__);
 
 	struct idm51_common *idm51 = target_to_idm51(target);
 
@@ -650,9 +661,9 @@ static int idm51_debug_entry(struct target *target)
 
 	idm51_examine_debug_reason(target);
 
-	LOG_DEBUG("entered debug state at PC #%" PRIx32 ", target->state: %s", 
-				buf_get_u32(idm51->core_cache->reg_list[IDM51_PC].value, 0, 32),
-				target_state_name(target));
+	LOG_DEBUG("entered debug state at PC #%" PRIx32 ", target->state: %s",
+			  buf_get_u32(idm51->core_cache->reg_list[IDM51_PC].value, 0, 32),
+			  target_state_name(target));
 
 	return ERROR_OK;
 	// err = idm51_core_halt(target);
@@ -663,54 +674,54 @@ static int idm51_debug_entry(struct target *target)
 	// if (err != ERROR_OK)
 	// 	return err;
 
-	//LOG_INFO("DBI_STAT %08x(%d)",data, target->coreid);
+	// LOG_INFO("DBI_STAT %08x(%d)",data, target->coreid);
 
-	//if HALT
-// 	if ((data & Status_MC_in_debug_mode) == Status_MC_in_debug_mode) //Status_MC_in_debug_mode_out
-// 	{
-// 		//LOG_INFO("%s","halt" );
-// 		midres = midres | STATE_HALT;
-// 	}
-// 	else
-// 	{
-// 		LOG_INFO("%s","hangup");
-// 		// не вышли в режим отладки
-// 		midres = midres | STATE_HANGUP;
+	// if HALT
+	// 	if ((data & Status_MC_in_debug_mode) == Status_MC_in_debug_mode) //Status_MC_in_debug_mode_out
+	// 	{
+	// 		//LOG_INFO("%s","halt" );
+	// 		midres = midres | STATE_HALT;
+	// 	}
+	// 	else
+	// 	{
+	// 		LOG_INFO("%s","hangup");
+	// 		// не вышли в режим отладки
+	// 		midres = midres | STATE_HANGUP;
 
-// 		//idm51->core_hangup = 1;
+	// 		//idm51->core_hangup = 1;
 
-// //		err = idm51_read_memory_core(target, DATA_MEM, 0x2000, &data);
+	// //		err = idm51_read_memory_core(target, DATA_MEM, 0x2000, &data);
 
-// 		*res = midres;
-// 		return err;
-// 	}
+	// 		*res = midres;
+	// 		return err;
+	// 	}
 
-// 	//idm51->core_hangup = 0;
+	// 	//idm51->core_hangup = 0;
 
-// 	//if breakpoint
-// 	err = idm51_examine_debug_reason(target, &data);
-// 	if (err != ERROR_OK)
-// 		return err;
+	// 	//if breakpoint
+	// 	err = idm51_examine_debug_reason(target, &data);
+	// 	if (err != ERROR_OK)
+	// 		return err;
 
-// 	/* if (data & 0x1)
-// 	{
-// 		idm51_debug_read_register(target, PC_REGNUM, &data1);
-// 		LOG_INFO("breakpoint - %04X", data1);
+	// 	/* if (data & 0x1)
+	// 	{
+	// 		idm51_debug_read_register(target, PC_REGNUM, &data1);
+	// 		LOG_INFO("breakpoint - %04X", data1);
 
-// 		uint32_t out_reg;
-// 		err = idm51_read_status(target, &out_reg);
-// 		//LOG_INFO("bpstatr----out_dr %X", out_reg);
+	// 		uint32_t out_reg;
+	// 		err = idm51_read_status(target, &out_reg);
+	// 		//LOG_INFO("bpstatr----out_dr %X", out_reg);
 
-// 		// halt core
-// 		err = idm51_core_halt(target);
-// 		if (err != ERROR_OK)
-// 			return err;
+	// 		// halt core
+	// 		err = idm51_core_halt(target);
+	// 		if (err != ERROR_OK)
+	// 			return err;
 
-// 		midres = midres | STATE_BREAKPOINT;
-// 	}*/
+	// 		midres = midres | STATE_BREAKPOINT;
+	// 	}*/
 
-// 	*res = midres;
-// 	return err;
+	// 	*res = midres;
+	// 	return err;
 }
 
 // static int idm51_is_target_stop_by_event(struct target *target) // Ещё одна бездарная функция
@@ -790,21 +801,21 @@ static int idm51_init_target(struct command_context *cmd_ctx, struct target *tar
 	int err = ERROR_OK;
 	LOG_INFO("%s", __func__);
 
-	//struct idm51_common *idm51 = target_to_idm51(target);
+	// struct idm51_common *idm51 = target_to_idm51(target);
 
-	//idm51->core_hangup = 0;
+	// idm51->core_hangup = 0;
 
-	//idm51->idm51_num_regs = IDM51_NUM_REGS;
-	
-	//memset(idm51->idm51_breakpoints.Is_BP_Active, 0, BPOINTS_AMOUNT * sizeof(idm51->idm51_breakpoints.Is_BP_Active[0]));
-	//memset(idm51->idm51_breakpoints.BP_Address, 0, BPOINTS_AMOUNT * sizeof(idm51->idm51_breakpoints.BP_Address[0]));
+	// idm51->idm51_num_regs = IDM51_NUM_REGS;
 
-	//idm51->bp_activ_map = 0;
-	//idm51->bp_pc_num = 6;
-	//idm51->triggered_pc = NONE_ADR;
+	// memset(idm51->idm51_breakpoints.Is_BP_Active, 0, BPOINTS_AMOUNT * sizeof(idm51->idm51_breakpoints.Is_BP_Active[0]));
+	// memset(idm51->idm51_breakpoints.BP_Address, 0, BPOINTS_AMOUNT * sizeof(idm51->idm51_breakpoints.BP_Address[0]));
 
-	//idm51->DEBUG_REQUEST = false;
-	//idm51->spi_load_en = true;
+	// idm51->bp_activ_map = 0;
+	// idm51->bp_pc_num = 6;
+	// idm51->triggered_pc = NONE_ADR;
+
+	// idm51->DEBUG_REQUEST = false;
+	// idm51->spi_load_en = true;
 
 	idm51_build_reg_cache(target);
 
@@ -813,18 +824,18 @@ static int idm51_init_target(struct command_context *cmd_ctx, struct target *tar
 
 static int idm51_examine(struct target *target)
 {
-	//uint64_t out_data = 0xbad0ull;
-	//uint32_t out_reg = 0xbad0;
+	// uint64_t out_data = 0xbad0ull;
+	// uint32_t out_reg = 0xbad0;
 
 	LOG_INFO("%s", __func__);
 
 	struct idm51_common *idm51 = target_to_idm51(target);
-	//LOG_INFO("target %X target->coreid - %X",target->target_number, target->coreid);
+	// LOG_INFO("target %X target->coreid - %X",target->target_number, target->coreid);
 
-//	uint32_t chip;
+	//	uint32_t chip;
 
-
-	if (target->tap->has_idcode == false) {
+	if (target->tap->has_idcode == false)
+	{
 		LOG_ERROR("no IDCODE present on device");
 		return ERROR_COMMAND_SYNTAX_ERROR;
 	}
@@ -833,10 +844,10 @@ static int idm51_examine(struct target *target)
 	{
 		target_set_examined(target);
 
-		if(target->tap->idcode == TAPID_IDM51)
+		if (target->tap->idcode == TAPID_IDM51)
 		{
-			//idm51
-			if(target->tap->priv == NULL )
+			// idm51
+			if (target->tap->priv == NULL)
 			{
 				struct idm51_tap_common *idm51_tap = calloc(1, sizeof(struct idm51_tap_common));
 				idm51_tap->core_smp_num = 1;
@@ -855,7 +866,7 @@ static int idm51_examine(struct target *target)
 			return ERROR_COMMAND_SYNTAX_ERROR;
 		}
 
-		//idm51->DEBUG_REQUEST = true;
+		// idm51->DEBUG_REQUEST = true;
 		idm51->idm51_num_regs = IDM51_NUM_REGS;
 
 		uint8_t ir_in = 0;
@@ -863,12 +874,12 @@ static int idm51_examine(struct target *target)
 		if (err != ERROR_OK)
 			return err;
 
-		//LOG_INFO("examine halt");
+		// LOG_INFO("examine halt");
 
 		LOG_INFO("%s", "Core Examine task");
 		err = idm51_print_status(target);
 
-		//halt
+		// halt
 		err = idm51_core_halt(target);
 		if (err != ERROR_OK)
 			return err;
@@ -882,10 +893,10 @@ static int idm51_arch_state(struct target *target)
 	struct idm51_common *idm51 = target_to_idm51(target);
 
 	LOG_USER("target halted due to %s, pc: 0x%8.8" PRIx32 "",
-		debug_reason_name(target),
-		buf_get_u32(idm51->core_cache->reg_list[IDM51_PC].value, 0, 32));
-	
-	//LOG_DEBUG("%s", __func__);
+			 debug_reason_name(target),
+			 buf_get_u32(idm51->core_cache->reg_list[IDM51_PC].value, 0, 32));
+
+	// LOG_DEBUG("%s", __func__);
 	return ERROR_OK;
 }
 
@@ -903,28 +914,28 @@ static int idm51_arch_state(struct target *target)
 
 static int idm51_poll(struct target *target)
 {
-	//LOG_DEBUG("%s", __func__);
-	//LOG_INFO("idm51_poll target->coreid - %X", target->coreid);
-	//LOG_INFO("%s", __func__);
-	
+	// LOG_DEBUG("%s", __func__);
+	// LOG_INFO("idm51_poll target->coreid - %X", target->coreid);
+	// LOG_INFO("%s", __func__);
+
 	int err;
-	//int result = 0;
+	// int result = 0;
 	uint32_t status_reg = 0;
 
 	struct idm51_common *idm51 = target_to_idm51(target);
 
 	err = idm51_read_status(target, &status_reg);
 	if (err != ERROR_OK)
-	{	
+	{
 		LOG_DEBUG("idm51_read_status failed. Err = %d", err);
 		return err;
 	}
 	// if debug state -------------
-	//err = idm51_test_debugstate(target,&result,false);
-	//if (err != ERROR_OK)
+	// err = idm51_test_debugstate(target,&result,false);
+	// if (err != ERROR_OK)
 	//	return err;
 
-	//LOG_INFO("result - %d (%d)", result, target->coreid);
+	// LOG_INFO("result - %d (%d)", result, target->coreid);
 
 	if (status_reg & STATE_HALTED)
 	{
@@ -932,10 +943,10 @@ static int idm51_poll(struct target *target)
 		{
 			if (target->state == TARGET_UNKNOWN)
 				LOG_DEBUG("idm51 already halted during server startup");
-			
+
 			err = idm51_debug_entry(target);
 			if (err != ERROR_OK)
-			{	
+			{
 				LOG_DEBUG("idm51_debug_entry failed. Err = %d", err);
 				return err;
 			}
@@ -945,14 +956,15 @@ static int idm51_poll(struct target *target)
 				target->state = TARGET_HALTED;
 				target_call_event_callbacks(target, TARGET_EVENT_DEBUG_HALTED);
 			}
-			else 
+			else
 			{
 				target->state = TARGET_HALTED;
 				target_call_event_callbacks(target, TARGET_EVENT_HALTED);
 			}
 		}
 	}
-	else target->state = TARGET_RUNNING;
+	else
+		target->state = TARGET_RUNNING;
 
 	return ERROR_OK;
 }
@@ -982,7 +994,6 @@ static int idm51_poll(struct target *target)
 
 // 			LOG_INFO("poll halted: PC: 0x%08X (%d)", idm51->core_regs[PC_REGNUM], target->coreid);
 
-			
 // 			err = idm51_print_status(target);
 // 		}
 // 	}
@@ -996,7 +1007,8 @@ static int idm51_halt(struct target *target)
 
 	LOG_DEBUG("%s", __func__);
 
-	if (target->state == TARGET_HALTED) {
+	if (target->state == TARGET_HALTED)
+	{
 		LOG_DEBUG("target was already halted");
 		return ERROR_OK;
 	}
@@ -1010,26 +1022,26 @@ static int idm51_halt(struct target *target)
 		return err;
 
 	struct idm51_common *idm51 = target_to_idm51(target);
-	//idm51->DEBUG_REQUEST = true;
+	// idm51->DEBUG_REQUEST = true;
 	target->debug_reason = DBG_REASON_DBGRQ;
 
 	return ERROR_OK;
 }
 
 static int idm51_resume(struct target *target,
-	int current,
-	target_addr_t address,
-	int handle_breakpoints,
-	int debug_execution)
+						int current,
+						target_addr_t address,
+						int handle_breakpoints,
+						int debug_execution)
 {
 	int err;
 	struct idm51_common *idm51 = target_to_idm51(target);
 	struct breakpoint *breakpoint = NULL;
 	uint32_t resume_pc;
 
-	LOG_DEBUG("%s %08X %08X", __func__, current, (unsigned) address);
+	LOG_DEBUG("%s %08X %08X", __func__, current, (unsigned)address);
 
-	if (target->state != TARGET_HALTED) 
+	if (target->state != TARGET_HALTED)
 	{
 		LOG_TARGET_ERROR(target, "not halted");
 		return ERROR_TARGET_NOT_HALTED;
@@ -1037,9 +1049,10 @@ static int idm51_resume(struct target *target,
 
 	/* current = 1: continue on current pc,
 	   otherwise continue at <address> */
-	if (!current) {
+	if (!current)
+	{
 		buf_set_u32(idm51->core_cache->reg_list[IDM51_PC].value,
-			0, 32, address);
+					0, 32, address);
 		idm51->core_cache->reg_list[IDM51_PC].dirty = true;
 		idm51->core_cache->reg_list[IDM51_PC].valid = true;
 	}
@@ -1051,10 +1064,9 @@ static int idm51_resume(struct target *target,
 			idm51->core_cache->reg_list[IDM51_PC].value,
 			0, 32);
 
-	err = idm51_restore_context(target , 0);
+	err = idm51_restore_context(target, 0);
 	if (err != ERROR_OK)
 		return err;
-	
 
 	LOG_INFO("resume ");
 
@@ -1078,13 +1090,16 @@ static int idm51_resume(struct target *target,
 	// 		idm51_set_breakpoint(target, breakpoint);
 	// 	}
 	// }
-	//idm51->DEBUG_REQUEST = false;
+	// idm51->DEBUG_REQUEST = false;
 
-	if (!debug_execution) {
+	if (!debug_execution)
+	{
 		target->state = TARGET_RUNNING;
 		target_call_event_callbacks(target, TARGET_EVENT_RESUMED);
 		LOG_DEBUG("target resumed at 0x%" PRIx32 "", resume_pc);
-	} else {
+	}
+	else
+	{
 		target->state = TARGET_DEBUG_RUNNING;
 		target_call_event_callbacks(target, TARGET_EVENT_DEBUG_RESUMED);
 		LOG_DEBUG("target debug resumed at 0x%" PRIx32 "", resume_pc);
@@ -1092,7 +1107,6 @@ static int idm51_resume(struct target *target,
 
 	return ERROR_OK;
 }
-
 
 // static int idm51_step_ex(struct target *target,
 // 	int current,
@@ -1142,9 +1156,9 @@ static int idm51_resume(struct target *target,
 // }
 
 static int idm51_step(struct target *target,
-	int current,
-	target_addr_t address,
-	int handle_breakpoints)
+					  int current,
+					  target_addr_t address,
+					  int handle_breakpoints)
 {
 	LOG_DEBUG("%s", __func__);
 
@@ -1152,32 +1166,31 @@ static int idm51_step(struct target *target,
 	struct idm51_common *idm51 = target_to_idm51(target);
 	struct breakpoint *breakpoint = NULL;
 
-
-	if (target->state != TARGET_HALTED) {
+	if (target->state != TARGET_HALTED)
+	{
 		LOG_TARGET_ERROR(target, "not halted");
 		return ERROR_TARGET_NOT_HALTED;
 	}
 
-	//LOG_DEBUG("%s %08X %08X", __func__, current, (unsigned) address);
+	// LOG_DEBUG("%s %08X %08X", __func__, current, (unsigned) address);
 
 	err = idm51_restore_context(target, 0);
 	if (err != ERROR_OK)
 		return err;
-		
+
 	target->debug_reason = DBG_REASON_SINGLESTEP;
 
 	target_call_event_callbacks(target, TARGET_EVENT_STEP_START);
 
-	//LOG_INFO("synchronous step on all matrix cores(%d)",target->coreid);
+	// LOG_INFO("synchronous step on all matrix cores(%d)",target->coreid);
 
 	err = idm51_core_step(target);
 	if (err != ERROR_OK)
 		return err;
-	
 
-	//jtag_sleep(300);
+	// jtag_sleep(300);
 
-	//LOG_INFO("step");
+	// LOG_INFO("step");
 
 	// err = idm51_core_halt(target);
 	// if (err != ERROR_OK)
@@ -1202,28 +1215,26 @@ static int idm51_step(struct target *target,
 	// 	if (breakpoint)
 	// 		idm51_remove_breakpoint(target, breakpoint);
 	// }
-	
-	
 
 	register_cache_invalidate(idm51->core_cache);
 
-	//LOG_INFO("step halted: PC: 0x%X", idm51->core_regs[PC_REGNUM]);
+	// LOG_INFO("step halted: PC: 0x%X", idm51->core_regs[PC_REGNUM]);
 	LOG_USER("target stepped, pc: 0x%4.4" PRIx32 "",
-		buf_get_u32(idm51->core_cache->reg_list[IDM51_PC].value, 0, 32));
+			 buf_get_u32(idm51->core_cache->reg_list[IDM51_PC].value, 0, 32));
 	LOG_DEBUG("target stepped ");
 	idm51_debug_entry(target);
 
 	target_call_event_callbacks(target, TARGET_EVENT_STEP_END);
-	//uint32_t out_reg = 0;
-	//err = idm51_read_status(target, READ_STATUS, DBI_STAT, &out_reg);
-	//LOG_INFO("step stat----out_dr %X", out_reg);
+	// uint32_t out_reg = 0;
+	// err = idm51_read_status(target, READ_STATUS, DBI_STAT, &out_reg);
+	// LOG_INFO("step stat----out_dr %X", out_reg);
 
-	//read_ports(target);
+	// read_ports(target);
 
 	// if (breakpoint)
 	// 	idm51_add_breakpoint(target, breakpoint);
-		
-	//target_call_event_callbacks(target, TARGET_EVENT_HALTED);
+
+	// target_call_event_callbacks(target, TARGET_EVENT_HALTED);
 
 	return err;
 }
@@ -1232,7 +1243,7 @@ static int idm51_assert_reset(struct target *target)
 {
 	int err = ERROR_OK;
 	struct idm51_common *idm51 = target_to_idm51(target);
-	uint8_t spi_load_en = ((uint8_t)(idm51 -> is_load_enabled)) & 1;
+	uint8_t spi_load_en = ((uint8_t)(idm51->is_load_enabled)) & 1;
 
 	LOG_INFO("%s", __func__);
 
@@ -1243,11 +1254,11 @@ static int idm51_assert_reset(struct target *target)
 
 	// RESETON
 	LOG_INFO("%s", "Assert Reset task");
-	err = idm51_write_core_resource(target, RST_ON , 0, 0, &spi_load_en);
+	err = idm51_write_core_resource(target, RST_ON, 0, 0, &spi_load_en);
 	if (err != ERROR_OK)
 		return err;
 
-	//jtag_sleep(100);
+	// jtag_sleep(100);
 
 	idm51->triggered_pc = NONE_ADR;
 	/* registers are now invalid */
@@ -1255,9 +1266,10 @@ static int idm51_assert_reset(struct target *target)
 
 	target->state = TARGET_RESET;
 	target->debug_reason = DBG_REASON_NOTHALTED;
-	//target->debug_reason = DBG_REASON_NOTHALTED;
+	// target->debug_reason = DBG_REASON_NOTHALTED;
 
-	if (target->reset_halt) {
+	if (target->reset_halt)
+	{
 		err = target_halt(target);
 		if (err != ERROR_OK)
 			return err;
@@ -1269,9 +1281,9 @@ static int idm51_assert_reset(struct target *target)
 static int idm51_deassert_reset(struct target *target)
 {
 	int err;
-	//LOG_INFO("%s", __func__);
+	// LOG_INFO("%s", __func__);
 	LOG_INFO("%s", "Deassert Reset task");
-	err = idm51_write_core_resource(target,RST_OFF,0,0,NULL);
+	err = idm51_write_core_resource(target, RST_OFF, 0, 0, NULL);
 	if (err != ERROR_OK)
 		return err;
 
@@ -1290,23 +1302,23 @@ static int idm51_deassert_reset(struct target *target)
 	// 	return err;
 }
 
-int idm51_read_memory_byte(struct target *target, target_addr_t address, uint8_t * buffer)
+int idm51_read_memory_byte(struct target *target, target_addr_t address, uint8_t *buffer)
 {
 	int err = ERROR_OK;
 
-	if(address < MEM_DMEMX_ADDR)
+	if (address < MEM_DMEMX_ADDR)
 	{
 		err = idm51_read_memory_core(target, MEM_IMEMX, (uint32_t)address, buffer);
 		if (err != ERROR_OK)
 			return err;
 	}
-	else if((MEM_DMEMX_ADDR <= address) && (address < MEM_DMEM_ADDR))
+	else if ((MEM_DMEMX_ADDR <= address) && (address < MEM_DMEM_ADDR))
 	{
 		err = idm51_read_memory_core(target, MEM_DMEMX, (uint32_t)(address - MEM_DMEMX_ADDR), buffer);
 		if (err != ERROR_OK)
 			return err;
 	}
-	else if((MEM_DMEM_ADDR <= address))
+	else if ((MEM_DMEM_ADDR <= address))
 	{
 		err = idm51_read_memory_core(target, MEM_DMEM, (uint32_t)(address - MEM_DMEM_ADDR), buffer);
 		if (err != ERROR_OK)
@@ -1317,16 +1329,16 @@ int idm51_read_memory_byte(struct target *target, target_addr_t address, uint8_t
 }
 
 static int idm51_read_memory(struct target *target,
-	target_addr_t address,
-	uint32_t size,
-	uint32_t count,
-	uint8_t *buffer)
+							 target_addr_t address,
+							 uint32_t size,
+							 uint32_t count,
+							 uint8_t *buffer)
 {
 	int err;
 
-	//LOG_INFO("rm(%d) %x %d start", target->coreid, address, (size * count));
+	// LOG_INFO("rm(%d) %x %d start", target->coreid, address, (size * count));
 
-	for(unsigned int i = 0; i < (size * count); i++)
+	for (unsigned int i = 0; i < (size * count); i++)
 	{
 		err = idm51_read_memory_byte(target, address, buffer);
 		if (err != ERROR_OK)
@@ -1340,32 +1352,32 @@ static int idm51_read_memory(struct target *target,
 }
 
 static int idm51_read_memory_default(struct target *target,
-	target_addr_t address,
-	uint32_t size,
-	uint32_t count,
-	uint8_t *buffer)
+									 target_addr_t address,
+									 uint32_t size,
+									 uint32_t count,
+									 uint8_t *buffer)
 {
 
 	return idm51_read_memory(target, address, size, count, buffer);
 }
 
-int idm51_write_memory_byte(struct target *target, uint32_t address, const uint8_t * buffer)
+int idm51_write_memory_byte(struct target *target, uint32_t address, const uint8_t *buffer)
 {
 	int err = ERROR_OK;
 
-	if(address < MEM_DMEMX_ADDR)
+	if (address < MEM_DMEMX_ADDR)
 	{
-		err = idm51_write_memory_core(target, MEM_IMEMX, (uint32_t)address , buffer);
+		err = idm51_write_memory_core(target, MEM_IMEMX, (uint32_t)address, buffer);
 		if (err != ERROR_OK)
 			return err;
 	}
-	else if((MEM_DMEMX_ADDR <= address) && (address < MEM_DMEM_ADDR))
+	else if ((MEM_DMEMX_ADDR <= address) && (address < MEM_DMEM_ADDR))
 	{
 		err = idm51_write_memory_core(target, MEM_DMEMX, (uint32_t)(address - MEM_DMEMX_ADDR), buffer);
 		if (err != ERROR_OK)
 			return err;
 	}
-	else if((MEM_DMEM_ADDR <= address))
+	else if ((MEM_DMEM_ADDR <= address))
 	{
 		err = idm51_write_memory_core(target, MEM_DMEM, (uint32_t)(address - MEM_DMEM_ADDR), buffer);
 		if (err != ERROR_OK)
@@ -1376,16 +1388,16 @@ int idm51_write_memory_byte(struct target *target, uint32_t address, const uint8
 }
 
 static int idm51_write_memory(struct target *target,
-	target_addr_t address,
-	uint32_t size,
-	uint32_t count,
-	const uint8_t *buffer)
+							  target_addr_t address,
+							  uint32_t size,
+							  uint32_t count,
+							  const uint8_t *buffer)
 {
 	int err;
 
-	//LOG_INFO("wm(%d) %x %d ", target->coreid, address, (size * count));
+	// LOG_INFO("wm(%d) %x %d ", target->coreid, address, (size * count));
 
-	for(unsigned int i = 0; i < (size * count); i++)
+	for (unsigned int i = 0; i < (size * count); i++)
 	{
 		err = idm51_write_memory_byte(target, address, buffer);
 		if (err != ERROR_OK)
@@ -1399,10 +1411,10 @@ static int idm51_write_memory(struct target *target,
 }
 
 static int idm51_write_memory_default(struct target *target,
-	target_addr_t address,
-	uint32_t size,
-	uint32_t count,
-	const uint8_t *buffer)
+									  target_addr_t address,
+									  uint32_t size,
+									  uint32_t count,
+									  const uint8_t *buffer)
 {
 	return idm51_write_memory(target, address, size, count, buffer);
 }
@@ -1413,34 +1425,35 @@ static int idm51_add_breakpoint(struct target *target, struct breakpoint *breakp
 	int retval = ERROR_OK;
 
 	LOG_INFO("add BPID: %d, Address: %#08llx, Type: %d",
-		breakpoint->unique_id,
-		breakpoint->address,
-		breakpoint->type);
+			 breakpoint->unique_id,
+			 breakpoint->address,
+			 breakpoint->type);
 
 	// if(idm51->core_hangup == 1)
 	// 	return ERROR_TARGET_NOT_HALTED;
 
-	if (target->state != TARGET_HALTED) {
+	if (target->state != TARGET_HALTED)
+	{
 		LOG_WARNING("target not halted");
 		return ERROR_TARGET_NOT_HALTED;
 	}
 
-	if((breakpoint->type == BKPT_HARD)||(breakpoint->type == BKPT_SOFT))
+	if ((breakpoint->type == BKPT_HARD) || (breakpoint->type == BKPT_SOFT))
 	{
 		/* did we already set this breakpoint? */
 		if (breakpoint->is_set)
 			return ERROR_OK;
 
-		if(breakpoint->address < MEM_DMEMX_ADDR)
+		if (breakpoint->address < MEM_DMEMX_ADDR)
 		{
-			for(unsigned int i = 0; i < INSTRUCTION_BPOINTS_AMOUNT; i++)
+			for (unsigned int i = 0; i < INSTRUCTION_BPOINTS_AMOUNT; i++)
 			{
-				if((idm51->breakpoints[i].is_bp_used) == 0)
+				if ((idm51->breakpoints[i].is_bp_used) == 0)
 				{
 					idm51->breakpoints[i].is_bp_used = 1;
 					idm51->breakpoints[i].bp_value = breakpoint->address;
 
-					retval = idm51_write_core_resource(target,TRIGON,i,breakpoint->address,NULL);
+					retval = idm51_write_core_resource(target, TRIGON, i, breakpoint->address, NULL);
 					if (retval != ERROR_OK)
 						return retval;
 
@@ -1451,7 +1464,8 @@ static int idm51_add_breakpoint(struct target *target, struct breakpoint *breakp
 			}
 
 			LOG_ERROR("Unable to set  breakpoint at address %#08llx" PRIx32
-					" - only %d comparator available ", breakpoint->address, INSTRUCTION_BPOINTS_AMOUNT);
+					  " - only %d comparator available ",
+					  breakpoint->address, INSTRUCTION_BPOINTS_AMOUNT);
 			return ERROR_OK;
 		}
 	}
@@ -1465,24 +1479,25 @@ static int idm51_remove_breakpoint(struct target *target, struct breakpoint *bre
 	struct idm51_common *idm51 = target_to_idm51(target);
 
 	LOG_INFO("rem BPID: %d, Address: %#08llx",
-		breakpoint->unique_id,
-		breakpoint->address);
+			 breakpoint->unique_id,
+			 breakpoint->address);
 
 	// if(idm51->core_hangup == 1)
 	// 	return ERROR_TARGET_NOT_HALTED;
 
-	if (!breakpoint->is_set) {
+	if (!breakpoint->is_set)
+	{
 		LOG_WARNING("breakpoint not set");
 		return ERROR_OK;
 	}
 
-	if((breakpoint->type == BKPT_HARD)||(breakpoint->type == BKPT_SOFT))
+	if ((breakpoint->type == BKPT_HARD) || (breakpoint->type == BKPT_SOFT))
 	{
-		if(breakpoint->address < MEM_DMEMX_ADDR)
+		if (breakpoint->address < MEM_DMEMX_ADDR)
 		{
-			//idm51->bp_activ_map = idm51->bp_activ_map &(~(1<<*(breakpoint->orig_instr)));
+			// idm51->bp_activ_map = idm51->bp_activ_map &(~(1<<*(breakpoint->orig_instr)));
 			idm51->breakpoints[*(breakpoint->orig_instr)].is_bp_used = 0;
-			retval = idm51_write_core_resource(target,TRIGOFF,*(breakpoint->orig_instr),breakpoint->address,NULL);
+			retval = idm51_write_core_resource(target, TRIGOFF, *(breakpoint->orig_instr), breakpoint->address, NULL);
 			if (retval != ERROR_OK)
 				return retval;
 
@@ -1498,54 +1513,53 @@ static int idm51_spi_communication(struct target *target, const uint8_t *send_bu
 	int retval = ERROR_OK;
 	int err = ERROR_OK;
 	uint8_t data = 0;
-	//struct idm51_common *idm51 = target_to_idm51(target);
+	// struct idm51_common *idm51 = target_to_idm51(target);
 
 	data = 0x38;
-	err = idm51_write_memory_byte(target, SPI_REG_CFG_2, &data);		// Slave deactivated
+	err = idm51_write_memory_byte(target, SPI_REG_CFG_2, &data); // Slave deactivated
 	if (err != ERROR_OK)
 		return err;
-	
+
 	data = 0x18;
-	err = idm51_write_memory_byte(target, SPI_REG_CFG_3, &data);		// SPI OFF
+	err = idm51_write_memory_byte(target, SPI_REG_CFG_3, &data); // SPI OFF
 	if (err != ERROR_OK)
 		return err;
 
 	data = 0x1C;
-	err = idm51_write_memory_byte(target, SPI_REG_CFG_3, &data);		// SPI ON
+	err = idm51_write_memory_byte(target, SPI_REG_CFG_3, &data); // SPI ON
 	if (err != ERROR_OK)
 		return err;
 
 	data = 0x28;
-	err = idm51_write_memory_byte(target, SPI_REG_CFG_2, &data);		// Slave activated
+	err = idm51_write_memory_byte(target, SPI_REG_CFG_2, &data); // Slave activated
 	if (err != ERROR_OK)
 		return err;
 
-
-	for(int i = 0; i < send_buf_sz; i++)
+	for (int i = 0; i < send_buf_sz; i++)
 	{
 		data = send_buf[i];
-		err = idm51_write_memory_byte(target, SPI_DATA_REG, &data);		
+		err = idm51_write_memory_byte(target, SPI_DATA_REG, &data);
 		if (err != ERROR_OK)
 			return err;
 
-		err = idm51_read_memory_byte(target, SPI_REG_status_1, &data);	// How many bytes are in FIFO?
+		err = idm51_read_memory_byte(target, SPI_REG_status_1, &data); // How many bytes are in FIFO?
 		if (err != ERROR_OK)
 			return err;
-		if(data)
+		if (data)
 		{
-			err = idm51_read_memory_byte(target, SPI_REG_status_1, &(receive_buf[i]));		// Read byte from FIFO
+			err = idm51_read_memory_byte(target, SPI_REG_status_1, &(receive_buf[i])); // Read byte from FIFO
 			if (err != ERROR_OK)
 				return err;
 		}
 	}
 
 	data = 0x38;
-	err = idm51_write_memory_byte(target, SPI_REG_CFG_2, &data);		// Slave deactivated
+	err = idm51_write_memory_byte(target, SPI_REG_CFG_2, &data); // Slave deactivated
 	if (err != ERROR_OK)
 		return err;
 
 	data = 0x18;
-	err = idm51_write_memory_byte(target, SPI_REG_CFG_3, &data);		// SPI OFF
+	err = idm51_write_memory_byte(target, SPI_REG_CFG_3, &data); // SPI OFF
 	if (err != ERROR_OK)
 		return err;
 
@@ -1558,19 +1572,19 @@ static int idm51_identify_flash(struct target *target)
 	uint16_t capacity_code = 0;
 	uint8_t data = 0;
 	uint8_t rec_data[16] = {0};
-	  
-	
+
 	int err;
 	int retval = ERROR_OK;
 	struct idm51_common *idm51 = target_to_idm51(target);
 
-	if (target->state != TARGET_HALTED) {
+	if (target->state != TARGET_HALTED)
+	{
 		LOG_WARNING("target not halted");
 		return ERROR_TARGET_NOT_HALTED;
 	}
 
 	data = 0x02;
-	err = idm51_write_memory_byte(target, SPI_REG_CFG_1, &data);		// Freq = 5 MHz
+	err = idm51_write_memory_byte(target, SPI_REG_CFG_1, &data); // Freq = 5 MHz
 	if (err != ERROR_OK)
 		return err;
 	// data = 0x1C;
@@ -1582,15 +1596,15 @@ static int idm51_identify_flash(struct target *target)
 	// 	return err;
 
 	data = 0x38;
-	err = idm51_write_memory_byte(target, SPI_REG_CFG_2, &data);		// SS0, Motorola, Master, CPHA=CPOL=0, Programmable Slave Select, Slave deactivated
+	err = idm51_write_memory_byte(target, SPI_REG_CFG_2, &data); // SS0, Motorola, Master, CPHA=CPOL=0, Programmable Slave Select, Slave deactivated
 	if (err != ERROR_OK)
 		return err;
 	data = 0xFF;
-	err = idm51_write_memory_byte(target, SPI_REG_mask_1, &data);		// No interrupts
+	err = idm51_write_memory_byte(target, SPI_REG_mask_1, &data); // No interrupts
 	if (err != ERROR_OK)
 		return err;
 	data = 0xF0;
-	err = idm51_write_memory_byte(target, SPI_REG_status_1, &data);		// Clear status
+	err = idm51_write_memory_byte(target, SPI_REG_status_1, &data); // Clear status
 	if (err != ERROR_OK)
 		return err;
 
@@ -1621,7 +1635,7 @@ static int idm51_identify_flash(struct target *target)
 	// if (err != ERROR_OK)
 	// 	return err;
 
-	//jtag_sleep(1000);
+	// jtag_sleep(1000);
 
 	// data = 0x38;
 	// err = idm51_write_memory_byte(target, SPI_REG_CFG_2, &data);		// Slave deactivated
@@ -1640,7 +1654,7 @@ static int idm51_identify_flash(struct target *target)
 	// 		if (err != ERROR_OK)
 	// 			return err;
 	// 		i++;
-	// 		err = idm51_read_memory_byte(target, SPI_REG_status_1, &data);	
+	// 		err = idm51_read_memory_byte(target, SPI_REG_status_1, &data);
 	// 		if (err != ERROR_OK)
 	// 			return err;
 	// 	}
@@ -1651,31 +1665,32 @@ static int idm51_identify_flash(struct target *target)
 	// if (err != ERROR_OK)
 	// 	return err;
 
-	idm51->ext_flash.manufacturer_id = rec_data[1];  					// Read Flash parameters
+	idm51->ext_flash.manufacturer_id = rec_data[1]; // Read Flash parameters
 	idm51->ext_flash.mem_type = rec_data[2];
 	idm51->ext_flash.capactiy = 1 << rec_data[3];
 
-	if(idm51->ext_flash.manufacturer_id == 0xEF)						// Winbond detected
+	if (idm51->ext_flash.manufacturer_id == 0xEF) // Winbond detected
 	{
 		idm51->ext_flash.is_identified = true;
 		idm51->ext_flash.manufacturer = "Winbond";
-		switch(idm51->ext_flash.mem_type)
+		switch (idm51->ext_flash.mem_type)
 		{
-			case 0x30:
-				mem_type_letter = 'X';
-				break;
-			case 0x40: case 0x70:
-				mem_type_letter = 'Q';
-				break;
-			case 0x61:
-				mem_type_letter = 'M';
-				break;
-			case 0xAA:
-				mem_type_letter = 'H';
-				break;
-			default:
-				mem_type_letter = '?';
-				break;
+		case 0x30:
+			mem_type_letter = 'X';
+			break;
+		case 0x40:
+		case 0x70:
+			mem_type_letter = 'Q';
+			break;
+		case 0x61:
+			mem_type_letter = 'M';
+			break;
+		case 0xAA:
+			mem_type_letter = 'H';
+			break;
+		default:
+			mem_type_letter = '?';
+			break;
 		}
 
 		switch (rec_data[3])
@@ -1723,7 +1738,7 @@ static int idm51_identify_flash(struct target *target)
 			capacity_code = 00;
 			break;
 		}
-		
+
 		snprintf(idm51->ext_flash.part_num, 20, "%c25%c%02d..", idm51->ext_flash.manufacturer[0], mem_type_letter, capacity_code);
 
 		//======================== Read Status Register ============================================================
@@ -1733,9 +1748,9 @@ static int idm51_identify_flash(struct target *target)
 		}
 		idm51->ext_flash.status_reg = rec_data[1];
 		//======================== Read Status Register =========================================================
-
 	}
-	else idm51->ext_flash.part_num = "unknown";
+	else
+		idm51->ext_flash.part_num = "unknown";
 
 	return retval;
 }
@@ -1762,57 +1777,56 @@ static int idm51_identify_flash(struct target *target)
 
 static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 {
-	uint8_t data = 0;
 	uint32_t curr_address = 0;
 	uint32_t sectors_4k = 0;
 	uint32_t blocks_32k = 0;
 	uint32_t blocks_64k = 0;
 	uint32_t to_be_erased = 0;
 	uint8_t rec_data[16] = {0};
-	
+
 	struct idm51_common *idm51 = target_to_idm51(target);
 	int retval = ERROR_OK;
 
 	{
 		uint8_t send_data[16] = {0x05, 0x00};
-		retval = idm51_spi_communication(target, send_data, 2, rec_data);	// Send Read Status Register command
+		retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
 		if (retval != ERROR_OK)
 			return retval;
 		idm51->ext_flash.status_reg = rec_data[1];
-		if(idm51->ext_flash.status_reg & (1 << 0))							// If Busy - leave
+		if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
 		{
 			LOG_ERROR("Cannot flash - Flash is Busy");
 			return ERROR_FAIL;
 		}
 	}
 
-	if((idm51->ext_flash.capactiy / 1024) < erase_size)
+	if ((idm51->ext_flash.capactiy / 1024) < erase_size)
 	{
 		LOG_ERROR("Failed to erase - flash capacity (%d KB) is less than you want to erase (%d KB)", idm51->ext_flash.capactiy / 1024, erase_size);
 		to_be_erased = 0;
 		return ERROR_COMMAND_ARGUMENT_INVALID;
 	}
-	else if((idm51->ext_flash.capactiy / 1024) == erase_size)					// Full chip erase
+	else if ((idm51->ext_flash.capactiy / 1024) == erase_size) // Full chip erase
 	{
 		{
-		uint8_t send_data[16] = {0x06};
-		retval = idm51_spi_communication(target, send_data, 1, rec_data);		// Send Write Enable command
-		if (retval != ERROR_OK)
-			return retval;
+			uint8_t send_data[16] = {0x06};
+			retval = idm51_spi_communication(target, send_data, 1, rec_data); // Send Write Enable command
+			if (retval != ERROR_OK)
+				return retval;
 		}
 
 		{
 			uint8_t send_data[16] = {0x05, 0x00};
-			retval = idm51_spi_communication(target, send_data, 2, rec_data);	// Send Read Status Register command
+			retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
 			if (retval != ERROR_OK)
 				return retval;
 			idm51->ext_flash.status_reg = rec_data[1];
-			if(idm51->ext_flash.status_reg & (1 << 0))							// If Busy - leave
+			if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
 			{
 				LOG_ERROR("Cannot flash - Flash is Busy");
 				return ERROR_FAIL;
 			}
-			if((idm51->ext_flash.status_reg & (1 << 1)) == 0)					// If Write Enable Latch was not set - leave
+			if ((idm51->ext_flash.status_reg & (1 << 1)) == 0) // If Write Enable Latch was not set - leave
 			{
 				LOG_ERROR("Cannot flash - Communication error");
 				return ERROR_FAIL;
@@ -1821,7 +1835,7 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 
 		{
 			uint8_t send_data[16] = {0x60};
-			idm51_spi_communication(target, send_data, 1, rec_data);			// Send Full chip erase command
+			idm51_spi_communication(target, send_data, 1, rec_data); // Send Full chip erase command
 		}
 
 		LOG_INFO("Successfully erased %d KB", (idm51->ext_flash.capactiy / 1024));
@@ -1830,8 +1844,9 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 	else
 	{
 		sectors_4k = erase_size / 4;
-		if (erase_size % 4) sectors_4k++;
-		to_be_erased = sectors_4k * 4 * 1024;	// in Bytes
+		if (erase_size % 4)
+			sectors_4k++;
+		to_be_erased = sectors_4k * 4 * 1024; // in Bytes
 		blocks_64k = sectors_4k / 16;
 		sectors_4k -= blocks_64k * 16;
 		blocks_32k = sectors_4k / 8;
@@ -1840,12 +1855,19 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 		while (blocks_64k)
 		{
 			{
+				uint8_t send_data[16] = {0x06};
+				retval = idm51_spi_communication(target, send_data, 1, rec_data); // Send Write Enable command
+				if (retval != ERROR_OK)
+					return retval;
+			}
+
+			{
 				uint8_t send_data[16] = {0x05, 0x00};
-				retval = idm51_spi_communication(target, send_data, 2, rec_data); 	// Send Read Status Register command
+				retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
 				if (retval != ERROR_OK)
 					return retval;
 				idm51->ext_flash.status_reg = rec_data[1];
-				if (idm51->ext_flash.status_reg & (1 << 0)) 						// If Busy - leave
+				if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
 				{
 					LOG_ERROR("Cannot flash - Flash is Busy");
 					return ERROR_FAIL;
@@ -1853,24 +1875,24 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 			}
 
 			{
-				uint8_t send_data[16] = {0xD8, (curr_address >> 16) && 0xFF, (curr_address >> 8) && 0xFF, (curr_address >> 0) && 0xFF};
-				retval = idm51_spi_communication(target, send_data, 4, rec_data); 	// Send Write Enable command
+				uint8_t send_data[16] = {0xD8, (curr_address >> 16) & 0xFF, (curr_address >> 8) & 0xFF, (curr_address >> 0) & 0xFF};
+				retval = idm51_spi_communication(target, send_data, 4, rec_data); // Send 64K Block Erase command
 				if (retval != ERROR_OK)
 					return retval;
 			}
 
 			{
 				uint8_t send_data[16] = {0x05, 0x00};
-				retval = idm51_spi_communication(target, send_data, 2, rec_data);	// Send Read Status Register command
+				retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
 				if (retval != ERROR_OK)
 					return retval;
 				idm51->ext_flash.status_reg = rec_data[1];
-				if (idm51->ext_flash.status_reg & (1 << 0)) 						// If Busy - leave
+				if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
 				{
 					LOG_ERROR("Cannot flash - Flash is Busy");
 					return ERROR_FAIL;
 				}
-				if ((idm51->ext_flash.status_reg & (1 << 1)) == 0) 					// If Write Enable Latch was not set - leave
+				if ((idm51->ext_flash.status_reg & (1 << 1)) == 0) // If Write Enable Latch was not set - leave
 				{
 					LOG_ERROR("Cannot flash - Communication error");
 					return ERROR_FAIL;
@@ -1884,12 +1906,19 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 		while (blocks_32k)
 		{
 			{
+				uint8_t send_data[16] = {0x06};
+				retval = idm51_spi_communication(target, send_data, 1, rec_data); // Send Write Enable command
+				if (retval != ERROR_OK)
+					return retval;
+			}
+
+			{
 				uint8_t send_data[16] = {0x05, 0x00};
-				retval = idm51_spi_communication(target, send_data, 2, rec_data); 	// Send Read Status Register command
+				retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
 				if (retval != ERROR_OK)
 					return retval;
 				idm51->ext_flash.status_reg = rec_data[1];
-				if (idm51->ext_flash.status_reg & (1 << 0)) 						// If Busy - leave
+				if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
 				{
 					LOG_ERROR("Cannot flash - Flash is Busy");
 					return ERROR_FAIL;
@@ -1897,24 +1926,24 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 			}
 
 			{
-				uint8_t send_data[16] = {0x52, (curr_address >> 16) && 0xFF, (curr_address >> 8) && 0xFF, (curr_address >> 0) && 0xFF};
-				retval = idm51_spi_communication(target, send_data, 4, rec_data); 	// Send Write Enable command
+				uint8_t send_data[16] = {0x52, (curr_address >> 16) & 0xFF, (curr_address >> 8) & 0xFF, (curr_address >> 0) & 0xFF};
+				retval = idm51_spi_communication(target, send_data, 4, rec_data); // Send 32K Block Erase command
 				if (retval != ERROR_OK)
 					return retval;
 			}
 
 			{
 				uint8_t send_data[16] = {0x05, 0x00};
-				retval = idm51_spi_communication(target, send_data, 2, rec_data); 	// Send Read Status Register command
+				retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
 				if (retval != ERROR_OK)
 					return retval;
 				idm51->ext_flash.status_reg = rec_data[1];
-				if (idm51->ext_flash.status_reg & (1 << 0)) 						// If Busy - leave
+				if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
 				{
 					LOG_ERROR("Cannot flash - Flash is Busy");
 					return ERROR_FAIL;
 				}
-				if ((idm51->ext_flash.status_reg & (1 << 1)) == 0) 					// If Write Enable Latch was not set - leave
+				if ((idm51->ext_flash.status_reg & (1 << 1)) == 0) // If Write Enable Latch was not set - leave
 				{
 					LOG_ERROR("Cannot flash - Communication error");
 					return ERROR_FAIL;
@@ -1928,12 +1957,19 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 		while (sectors_4k)
 		{
 			{
+				uint8_t send_data[16] = {0x06};
+				retval = idm51_spi_communication(target, send_data, 1, rec_data); // Send Write Enable command
+				if (retval != ERROR_OK)
+					return retval;
+			}
+
+			{
 				uint8_t send_data[16] = {0x05, 0x00};
-				retval = idm51_spi_communication(target, send_data, 2, rec_data); 	// Send Read Status Register command
+				retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
 				if (retval != ERROR_OK)
 					return retval;
 				idm51->ext_flash.status_reg = rec_data[1];
-				if (idm51->ext_flash.status_reg & (1 << 0)) 						// If Busy - leave
+				if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
 				{
 					LOG_ERROR("Cannot flash - Flash is Busy");
 					return ERROR_FAIL;
@@ -1941,24 +1977,24 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 			}
 
 			{
-				uint8_t send_data[16] = {0x52, (curr_address >> 16) && 0xFF, (curr_address >> 8) && 0xFF, (curr_address >> 0) && 0xFF};
-				retval = idm51_spi_communication(target, send_data, 4, rec_data); 	// Send Write Enable command
+				uint8_t send_data[16] = {0x20, (curr_address >> 16) & 0xFF, (curr_address >> 8) & 0xFF, (curr_address >> 0) & 0xFF};
+				retval = idm51_spi_communication(target, send_data, 4, rec_data); // Send Sector Erase command
 				if (retval != ERROR_OK)
 					return retval;
 			}
 
 			{
 				uint8_t send_data[16] = {0x05, 0x00};
-				retval = idm51_spi_communication(target, send_data, 2, rec_data); 	// Send Read Status Register command
+				retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
 				if (retval != ERROR_OK)
 					return retval;
 				idm51->ext_flash.status_reg = rec_data[1];
-				if (idm51->ext_flash.status_reg & (1 << 0)) 						// If Busy - leave
+				if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
 				{
 					LOG_ERROR("Cannot flash - Flash is Busy");
 					return ERROR_FAIL;
 				}
-				if ((idm51->ext_flash.status_reg & (1 << 1)) == 0) 					// If Write Enable Latch was not set - leave
+				if ((idm51->ext_flash.status_reg & (1 << 1)) == 0) // If Write Enable Latch was not set - leave
 				{
 					LOG_ERROR("Cannot flash - Communication error");
 					return ERROR_FAIL;
@@ -1977,11 +2013,125 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 	return retval;
 }
 
-static int idm51_winbond_flash_program(struct target *target, uint32_t size, FILE *firmware)
+static int idm51_winbond_flash_program(struct target *target, uint16_t size, FILE *firmware)
 {
 	int retval = ERROR_OK;
+	uint16_t curr_address = 0;
+	uint8_t rec_data[260] = {0};
 
 	struct idm51_common *idm51 = target_to_idm51(target);
+
+	{
+		uint8_t send_data[16] = {0x05, 0x00};
+		retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
+		if (retval != ERROR_OK)
+			return retval;
+		idm51->ext_flash.status_reg = rec_data[1];
+		if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
+		{
+			LOG_ERROR("Cannot flash - Flash is Busy");
+			return ERROR_FAIL;
+		}
+	}
+
+	{
+		uint8_t send_data[16] = {0x06};
+		retval = idm51_spi_communication(target, send_data, 1, rec_data); // Send Write Enable command
+		if (retval != ERROR_OK)
+			return retval;
+	}
+
+	{
+		uint8_t send_data[16] = {0x05, 0x00};
+		retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
+		if (retval != ERROR_OK)
+			return retval;
+		idm51->ext_flash.status_reg = rec_data[1];
+		if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
+		{
+			LOG_ERROR("Cannot flash - Flash is Busy");
+			return ERROR_FAIL;
+		}
+		if ((idm51->ext_flash.status_reg & (1 << 1)) == 0) // If Write Enable Latch was not set - leave
+		{
+			LOG_ERROR("Cannot flash - Communication error");
+			return ERROR_FAIL;
+		}
+	}
+
+	{
+		uint8_t send_data[16] = {0x02, 0x00, 0x00, 0x00, (size >> 0) & 0xFF, (size >> 8) & 0xFF};
+		retval = idm51_spi_communication(target, send_data, 6, rec_data); // Send Page Programm command with first two bytes - firmware size
+		if (retval != ERROR_OK)
+			return retval;
+		curr_address += 2;
+	}
+
+	while (curr_address < size)
+	{
+		{
+			uint8_t send_data[16] = {0x05, 0x00};
+			retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
+			if (retval != ERROR_OK)
+				return retval;
+			idm51->ext_flash.status_reg = rec_data[1];
+			if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
+			{
+				LOG_ERROR("Cannot flash - Flash is Busy");
+				return ERROR_FAIL;
+			}
+		}
+
+		{
+			uint8_t send_data[16] = {0x06};
+			retval = idm51_spi_communication(target, send_data, 1, rec_data); // Send Write Enable command
+			if (retval != ERROR_OK)
+				return retval;
+		}
+
+		{
+			uint8_t send_data[16] = {0x05, 0x00};
+			retval = idm51_spi_communication(target, send_data, 2, rec_data); // Send Read Status Register command
+			if (retval != ERROR_OK)
+				return retval;
+			idm51->ext_flash.status_reg = rec_data[1];
+			if (idm51->ext_flash.status_reg & (1 << 0)) // If Busy - leave
+			{
+				LOG_ERROR("Cannot flash - Flash is Busy");
+				return ERROR_FAIL;
+			}
+			if ((idm51->ext_flash.status_reg & (1 << 1)) == 0) // If Write Enable Latch was not set - leave
+			{
+				LOG_ERROR("Cannot flash - Communication error");
+				return ERROR_FAIL;
+			}
+		}
+
+		{
+			uint16_t i = 0;
+			uint8_t send_data[260] = {
+				0x02,
+				(curr_address >> 16) & 0xFF,
+				(curr_address >> 8) & 0xFF,
+				(curr_address >> 0) & 0xFF};
+			for (i = 0; i < 256; i++)
+			{
+				int s = 0;
+				if ((s = getc(firmware)) != EOF)
+				{
+					send_data[4 + i] = s & 0xFF;
+				}
+				else
+				{
+					break;
+				}
+			}
+			retval = idm51_spi_communication(target, send_data, i + 4, rec_data); // Send Page Programm command with first two bytes - firmware size
+			if (retval != ERROR_OK)
+				return retval;
+			curr_address += i;
+		}
+	}
 
 	return retval;
 }
@@ -1989,29 +2139,28 @@ static int idm51_winbond_flash_program(struct target *target, uint32_t size, FIL
 COMMAND_HANDLER(idm51_reset)
 {
 	int err = ERROR_OK;
-	//bool enable_spi_load = 0;
+	// bool enable_spi_load = 0;
 
-	
 	struct target *target = get_current_target(CMD_CTX);
 	struct idm51_common *idm51 = target_to_idm51(target);
 
 	if (CMD_ARGC > 0)
 	{
-		if(strcmp("enable_spi_load", CMD_ARGV[0]) == 0) idm51->is_load_enabled = true;
-		else idm51->is_load_enabled = false;
+		if (strcmp("enable_spi_load", CMD_ARGV[0]) == 0)
+			idm51->is_load_enabled = true;
+		else
+			idm51->is_load_enabled = false;
 	}
-
-	
 
 	err = idm51_assert_reset(target);
 	if (err != ERROR_OK)
-			return err;
+		return err;
 
 	err = idm51_print_status(target);
 
 	err = idm51_deassert_reset(target);
 	if (err != ERROR_OK)
-			return err;
+		return err;
 
 	err = idm51_print_status(target);
 
@@ -2040,9 +2189,9 @@ COMMAND_HANDLER(idm51_fill_zero)
 	else
 		return ERROR_COMMAND_SYNTAX_ERROR;
 
-	for(i = 0; i < size; i++)
+	for (i = 0; i < size; i++)
 	{
-		err = idm51_write_memory_byte(target, adr +  i, &dan);
+		err = idm51_write_memory_byte(target, adr + i, &dan);
 		if (err != ERROR_OK)
 			return err;
 	}
@@ -2054,7 +2203,7 @@ COMMAND_HANDLER(idm51_program)
 {
 	int err = ERROR_OK;
 	char fw_filename[255] = {'\0'};
-	FILE * firmware = NULL;
+	FILE *firmware = NULL;
 	target_addr_t adr = 0;
 	int s = 0;
 
@@ -2066,10 +2215,10 @@ COMMAND_HANDLER(idm51_program)
 		return ERROR_COMMAND_SYNTAX_ERROR;
 
 	firmware = fopen(fw_filename, "r+b");
-	if(firmware == NULL)
+	if (firmware == NULL)
 		return ERROR_COMMAND_ARGUMENT_INVALID;
 
-	while(((s = getc(firmware)) != EOF) && (adr < 0x10000))
+	while (((s = getc(firmware)) != EOF) && (adr < 0x10000))
 	{
 		char b = s & 0xFF;
 		err = idm51_write_memory_byte(target, adr, (byte *)&b);
@@ -2080,16 +2229,16 @@ COMMAND_HANDLER(idm51_program)
 		}
 		adr++;
 	}
-	
+
 	fclose(firmware);
 
 	err = idm51_assert_reset(target);
 	if (err != ERROR_OK)
-			return err;
+		return err;
 
 	err = idm51_deassert_reset(target);
 	if (err != ERROR_OK)
-			return err;
+		return err;
 
 	return err;
 }
@@ -2103,14 +2252,14 @@ COMMAND_HANDLER(idm51_flash_erase)
 		COMMAND_PARSE_NUMBER(u32, CMD_ARGV[0], erase_length);
 	else
 		return ERROR_COMMAND_SYNTAX_ERROR;
-	
+
 	struct target *target = get_current_target(CMD_CTX);
 	struct idm51_common *idm51 = target_to_idm51(target);
 
 	err = idm51_identify_flash(target);
 	if (err != ERROR_OK)
 		return err;
-	if(idm51->ext_flash.is_identified == 0)
+	if (idm51->ext_flash.is_identified == 0)
 	{
 		LOG_ERROR("Failed to identify flash");
 		return ERROR_FAIL;
@@ -2125,15 +2274,14 @@ COMMAND_HANDLER(idm51_flash_erase)
 	if (err != ERROR_OK)
 		return err;
 
-
 	return err;
 }
 
 COMMAND_HANDLER(idm51_flash_program)
 {
 	int err = ERROR_OK;
-	int fw_filename = 0;
-	FILE * firmware = NULL;
+	char fw_filename[255] = {'\0'};
+	FILE *firmware = NULL;
 	uint32_t fw_size = 0;
 	static uint8_t user_warned = 0;
 
@@ -2143,13 +2291,13 @@ COMMAND_HANDLER(idm51_flash_program)
 		return ERROR_COMMAND_SYNTAX_ERROR;
 
 	firmware = fopen(fw_filename, "r+b");
-	if(firmware == NULL)
+	if (firmware == NULL)
 		return ERROR_COMMAND_ARGUMENT_INVALID;
 
-	fseek(firmware,0,SEEK_END);
-	fw_size = ftell(firmware) + 2;							// Space required in flash = firmware size + firmware size value (2 bytes)
-	fseek(firmware,0,SEEK_SET);
-	
+	fseek(firmware, 0, SEEK_END);
+	fw_size = ftell(firmware) + 2; // Space required in flash = firmware size + firmware size value (2 bytes)
+	fseek(firmware, 0, SEEK_SET);
+
 	struct target *target = get_current_target(CMD_CTX);
 	struct idm51_common *idm51 = target_to_idm51(target);
 
@@ -2158,7 +2306,7 @@ COMMAND_HANDLER(idm51_flash_program)
 		err = idm51_identify_flash(target);
 		if (err != ERROR_OK)
 			return err;
-		if(idm51->ext_flash.is_identified == 0)
+		if (idm51->ext_flash.is_identified == 0)
 		{
 			LOG_ERROR("Failed to identify flash");
 			return ERROR_FAIL;
@@ -2193,7 +2341,7 @@ COMMAND_HANDLER(idm51_flash_program)
 	{
 		user_warned = 0;
 	}
-	
+
 	idm51_winbond_flash_program(target, fw_size, firmware);
 
 	return err;
@@ -2236,8 +2384,7 @@ static const struct command_registration idm51_command_handlers[] = {
 		.usage = "<bin file>",
 	},
 
-	COMMAND_REGISTRATION_DONE
-};
+	COMMAND_REGISTRATION_DONE};
 
 /** Holds methods for idm51 targets. */
 struct target_type idm51_target = {
