@@ -141,10 +141,14 @@ struct spi_flash
   uint8_t is_identified;                  // Flash identified flag
   uint8_t manufacturer_id;
   char *manufacturer;                     // Name of flash manufacturer
+  char *part_num;
+
   uint8_t mem_type;
   uint32_t capactiy;                      // Flash capacity in Bytes
-  char *part_num;
+
   uint8_t status_reg;
+
+  uint32_t bytes_erased;                        // Number of clean Bytes
 };
 
 struct idm51_common {

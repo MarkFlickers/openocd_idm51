@@ -431,10 +431,14 @@ static int idm51_init_arch_info(struct target *target, struct idm51_common *idm5
 	idm51->ext_flash.is_identified = false;
 	idm51->ext_flash.manufacturer_id = 0;
 	idm51->ext_flash.manufacturer = "?unknown?";
+	idm51->ext_flash.part_num = calloc(20, sizeof(char));
+
 	idm51->ext_flash.mem_type = 0;
 	idm51->ext_flash.capactiy = 0;
-	idm51->ext_flash.part_num = calloc(20, sizeof(char));
+	
 	idm51->ext_flash.status_reg = 0xFF;
+
+	idm51->ext_flash.bytes_erased = 0;
 
 	//idm51->spi_load_en = true;
 	idm51->is_load_done = false;
@@ -1763,6 +1767,7 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 	uint32_t sectors_4k = 0;
 	uint32_t blocks_32k = 0;
 	uint32_t blocks_64k = 0;
+	uint32_t to_be_erased = 0;
 	uint8_t rec_data[16] = {0};
 	
 	struct idm51_common *idm51 = target_to_idm51(target);
@@ -1784,6 +1789,7 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 	if((idm51->ext_flash.capactiy / 1024) < erase_size)
 	{
 		LOG_ERROR("Failed to erase - flash capacity (%d KB) is less than you want to erase (%d KB)", idm51->ext_flash.capactiy / 1024, erase_size);
+		to_be_erased = 0;
 		return ERROR_COMMAND_ARGUMENT_INVALID;
 	}
 	else if((idm51->ext_flash.capactiy / 1024) == erase_size)					// Full chip erase
@@ -1819,11 +1825,13 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 		}
 
 		LOG_INFO("Successfully erased %d KB", (idm51->ext_flash.capactiy / 1024));
+		to_be_erased = idm51->ext_flash.capactiy;
 	}
 	else
 	{
 		sectors_4k = erase_size / 4;
 		if (erase_size % 4) sectors_4k++;
+		to_be_erased = sectors_4k * 4 * 1024;	// in Bytes
 		blocks_64k = sectors_4k / 16;
 		sectors_4k -= blocks_64k * 16;
 		blocks_32k = sectors_4k / 8;
@@ -1961,15 +1969,20 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 			sectors_4k--;
 		}
 
-		LOG_INFO("Successfully erased %d KB", curr_address / 1024);
+		LOG_INFO("Successfully erased %d KB", to_be_erased / 1024);
 	}
+
+	idm51->ext_flash.bytes_erased = to_be_erased;
 
 	return retval;
 }
 
-static int idm51_flash_program(struct target *target)
+static int idm51_winbond_flash_program(struct target *target, uint32_t size, FILE *firmware)
 {
 	int retval = ERROR_OK;
+
+	struct idm51_common *idm51 = target_to_idm51(target);
+
 	return retval;
 }
 
@@ -2116,14 +2129,83 @@ COMMAND_HANDLER(idm51_flash_erase)
 	return err;
 }
 
+COMMAND_HANDLER(idm51_flash_program)
+{
+	int err = ERROR_OK;
+	int fw_filename = 0;
+	FILE * firmware = NULL;
+	uint32_t fw_size = 0;
+	static uint8_t user_warned = 0;
+
+	if (CMD_ARGC > 0)
+		strcpy(fw_filename, CMD_ARGV[0]);
+	else
+		return ERROR_COMMAND_SYNTAX_ERROR;
+
+	firmware = fopen(fw_filename, "r+b");
+	if(firmware == NULL)
+		return ERROR_COMMAND_ARGUMENT_INVALID;
+
+	fseek(firmware,0,SEEK_END);
+	fw_size = ftell(firmware) + 2;							// Space required in flash = firmware size + firmware size value (2 bytes)
+	fseek(firmware,0,SEEK_SET);
+	
+	struct target *target = get_current_target(CMD_CTX);
+	struct idm51_common *idm51 = target_to_idm51(target);
+
+	if (idm51->ext_flash.is_identified == 0)
+	{
+		err = idm51_identify_flash(target);
+		if (err != ERROR_OK)
+			return err;
+		if(idm51->ext_flash.is_identified == 0)
+		{
+			LOG_ERROR("Failed to identify flash");
+			return ERROR_FAIL;
+		}
+		else
+		{
+			LOG_INFO("Flash identified: %s %s", idm51->ext_flash.manufacturer, idm51->ext_flash.part_num);
+			LOG_INFO("Flash capacity: %.1f Mb = %d KB", (float)(idm51->ext_flash.capactiy) * 8 / 1024 / 1024, idm51->ext_flash.capactiy / 1024);
+		}
+
+		err = idm51_winbond_flash_erase(target, fw_size);
+		if (err != ERROR_OK)
+			return err;
+	}
+	else if (idm51->ext_flash.bytes_erased < fw_size)
+	{
+		if (user_warned == 0)
+		{
+			LOG_INFO("Erased space in flash is not enough for specified firmware. Run this command again to perform erase and programming");
+			user_warned = 1;
+			return err;
+		}
+		else
+		{
+			user_warned = 0;
+			err = idm51_winbond_flash_erase(target, fw_size);
+			if (err != ERROR_OK)
+				return err;
+		}
+	}
+	else
+	{
+		user_warned = 0;
+	}
+	
+	idm51_winbond_flash_program(target, fw_size, firmware);
+
+	return err;
+}
 
 static const struct command_registration idm51_command_handlers[] = {
 	{
 		.name = "idm51_reset",
 		.handler = idm51_reset,
 		.mode = COMMAND_EXEC,
-		.help = "reset target ",
-		.usage = "",
+		.help = "reset target. Specify \"enable_spi_load\" to enable firmware load from external spi-flash",
+		.usage = "idm51_reset [enable_spi_load]",
 	},
 	{
 		.name = "idm51_fill_zero",
@@ -2136,15 +2218,22 @@ static const struct command_registration idm51_command_handlers[] = {
 		.name = "idm51_program",
 		.handler = idm51_program,
 		.mode = COMMAND_EXEC,
-		.help = "idm51_program <hex file>",
-		.usage = "<hex file>",
+		.help = "idm51_program <bin file>",
+		.usage = "<bin file>",
 	},
 	{
 		.name = "idm51_flash_erase",
 		.handler = idm51_flash_erase,
 		.mode = COMMAND_EXEC,
-		.help = "This comand scans for SPI flash connected to CS0, and erases it if compatible. Size is specified in Kilobytes",
+		.help = "This command scans for SPI flash connected to CS0, and erases it if compatible. Size is specified in Kilobytes",
 		.usage = "<size in KB>",
+	},
+	{
+		.name = "idm51_flash_program",
+		.handler = idm51_flash_program,
+		.mode = COMMAND_EXEC,
+		.help = "This command writes specified bin file to SPI flash connected to CS0 if compatible. Will perform flash erase first if is wasn't done before.",
+		.usage = "<bin file>",
 	},
 
 	COMMAND_REGISTRATION_DONE
