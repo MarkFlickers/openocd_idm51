@@ -1165,6 +1165,8 @@ static int idm51_step(struct target *target,
 	int err;
 	struct idm51_common *idm51 = target_to_idm51(target);
 	struct breakpoint *breakpoint = NULL;
+	uint32_t curr_pc = 0;
+	uint64_t steps = 0;
 
 	if (target->state != TARGET_HALTED)
 	{
@@ -1173,7 +1175,7 @@ static int idm51_step(struct target *target,
 	}
 
 	// LOG_DEBUG("%s %08X %08X", __func__, current, (unsigned) address);
-
+	
 	err = idm51_restore_context(target, 0);
 	if (err != ERROR_OK)
 		return err;
@@ -1183,11 +1185,24 @@ static int idm51_step(struct target *target,
 	target_call_event_callbacks(target, TARGET_EVENT_STEP_START);
 
 	// LOG_INFO("synchronous step on all matrix cores(%d)",target->coreid);
-
-	err = idm51_core_step(target);
-	if (err != ERROR_OK)
-		return err;
-
+	idm51_debug_read_register(target, IDM51_PC, &curr_pc);
+	if (current == 0)
+	{
+		while(((target_addr_t)curr_pc != address) && steps < MAX_STEPS)
+		{
+			err = idm51_core_step(target);
+			if (err != ERROR_OK)
+				return err;
+			idm51_debug_read_register(target, IDM51_PC, &curr_pc);
+			steps++;
+		}
+	}
+	else
+	{
+		err = idm51_core_step(target);
+		if (err != ERROR_OK)
+			return err;
+	}
 	// jtag_sleep(300);
 
 	// LOG_INFO("step");
@@ -1215,12 +1230,12 @@ static int idm51_step(struct target *target,
 	// 	if (breakpoint)
 	// 		idm51_remove_breakpoint(target, breakpoint);
 	// }
-
+	idm51_debug_read_register(target, IDM51_PC, &curr_pc);
 	register_cache_invalidate(idm51->core_cache);
 
 	// LOG_INFO("step halted: PC: 0x%X", idm51->core_regs[PC_REGNUM]);
 	LOG_USER("target stepped, pc: 0x%4.4" PRIx32 "",
-			 buf_get_u32(idm51->core_cache->reg_list[IDM51_PC].value, 0, 32));
+			 curr_pc, 0, 32);
 	LOG_DEBUG("target stepped ");
 	idm51_debug_entry(target);
 
@@ -2205,6 +2220,7 @@ COMMAND_HANDLER(idm51_program)
 	char fw_filename[255] = {'\0'};
 	FILE *firmware = NULL;
 	target_addr_t adr = 0;
+	target_addr_t size = TARGET_ADDR_MAX;
 	int s = 0;
 
 	struct target *target = get_current_target(CMD_CTX);
@@ -2214,11 +2230,16 @@ COMMAND_HANDLER(idm51_program)
 	else
 		return ERROR_COMMAND_SYNTAX_ERROR;
 
+	if (CMD_ARGC > 1)
+		COMMAND_PARSE_NUMBER(target_addr, CMD_ARGV[1], size);
+	else
+		LOG_INFO("No size specified. Whole file will be written to target");
+
 	firmware = fopen(fw_filename, "r+b");
 	if (firmware == NULL)
 		return ERROR_COMMAND_ARGUMENT_INVALID;
 
-	while (((s = getc(firmware)) != EOF) && (adr < 0x10000))
+	while (((s = getc(firmware)) != EOF) && (adr < 0x10000) && (adr < size))
 	{
 		char b = s & 0xFF;
 		err = idm51_write_memory_byte(target, adr, (byte *)&b);
@@ -2352,7 +2373,7 @@ static const struct command_registration idm51_command_handlers[] = {
 		.name = "idm51_reset",
 		.handler = idm51_reset,
 		.mode = COMMAND_EXEC,
-		.help = "reset target. Specify \"enable_spi_load\" to enable firmware load from external spi-flash",
+		.help = "Reset target. Specify \"enable_spi_load\" to enable firmware load from external spi-flash",
 		.usage = "idm51_reset [enable_spi_load]",
 	},
 	{
@@ -2366,8 +2387,8 @@ static const struct command_registration idm51_command_handlers[] = {
 		.name = "idm51_program",
 		.handler = idm51_program,
 		.mode = COMMAND_EXEC,
-		.help = "idm51_program <bin file>",
-		.usage = "<bin file>",
+		.help = "Will program instruction memory with data from <bin file>. If [firmware_size] is specified, only this much bytes will be programmed, else programming till the end of <bin file>",
+		.usage = "idm51_program <bin file> [firmware_size]",
 	},
 	{
 		.name = "idm51_flash_erase",

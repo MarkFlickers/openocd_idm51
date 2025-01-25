@@ -11,6 +11,9 @@
 *.la
 *.in
 
+# idm51 test firmwares
+*.bin
+
 # coverage files (gcov)
 *.gcda
 *.gcno
