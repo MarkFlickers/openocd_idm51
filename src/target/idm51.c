@@ -479,7 +479,7 @@ static int idm51_configure_break_unit(struct target *target)
 	for (int i = 0; i < BPOINTS_AMOUNT; i++)
 	{
 		idm51->breakpoints[i].bp_number = i;
-		retval = idm51_write_core_resource(target, TRIGOFF, i, 0, NULL);
+		//retval = idm51_write_core_resource(target, TRIGOFF, i, 0, NULL);
 	}
 
 	idm51->bp_scanned = true;
@@ -820,6 +820,7 @@ static int idm51_init_target(struct command_context *cmd_ctx, struct target *tar
 	// idm51->spi_load_en = true;
 
 	idm51_build_reg_cache(target);
+	
 
 	return err;
 }
@@ -876,6 +877,10 @@ static int idm51_examine(struct target *target)
 		if (err != ERROR_OK)
 			return err;
 
+		for(int i = 0; i < BPOINTS_AMOUNT; i++)
+		{
+			err = idm51_write_core_resource(target, TRIGOFF, i, 0, NULL);
+		}
 		// LOG_INFO("examine halt");
 
 		LOG_INFO("%s", "Core Examine task");
