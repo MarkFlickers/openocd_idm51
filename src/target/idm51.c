@@ -549,6 +549,16 @@ static int idm51_examine_debug_reason(struct target *target)
 					target->debug_reason = DBG_REASON_BREAKPOINT;
 					break;
 				}
+				else if (idm51->breakpoints[6].is_bp_used || (idm51->breakpoints[7].is_bp_used))
+				{
+					target->debug_reason = DBG_REASON_WATCHPOINT;
+					break;
+				}
+				else
+				{
+					target->debug_reason = DBG_REASON_UNDEFINED;
+					break;
+				}
 			}
 		}
 		else
@@ -1028,7 +1038,6 @@ static int idm51_halt(struct target *target)
 	if (err != ERROR_OK)
 		return err;
 
-	struct idm51_common *idm51 = target_to_idm51(target);
 	// idm51->DEBUG_REQUEST = true;
 	target->debug_reason = DBG_REASON_DBGRQ;
 
@@ -2332,14 +2341,17 @@ COMMAND_HANDLER(idm51_program)
 	else
 		return ERROR_COMMAND_SYNTAX_ERROR;
 
+	firmware = fopen(fw_filename, "r+b");
+	if (firmware == NULL)
+	{
+		LOG_INFO("Failed to open file.");
+		return ERROR_COMMAND_ARGUMENT_INVALID;
+	}
+
 	if (CMD_ARGC > 1)
 		COMMAND_PARSE_NUMBER(target_addr, CMD_ARGV[1], size);
 	else
 		LOG_INFO("No size specified. Whole file will be written to target");
-
-	firmware = fopen(fw_filename, "r+b");
-	if (firmware == NULL)
-		return ERROR_COMMAND_ARGUMENT_INVALID;
 
 	while (((s = getc(firmware)) != EOF) && (adr < 0x10000) && (adr < size))
 	{
@@ -2355,7 +2367,12 @@ COMMAND_HANDLER(idm51_program)
 
 	fclose(firmware);
 
+
 	err = idm51_assert_reset(target);
+	if (err != ERROR_OK)
+		return err;
+
+	err = idm51_core_halt(target);
 	if (err != ERROR_OK)
 		return err;
 
@@ -2415,7 +2432,10 @@ COMMAND_HANDLER(idm51_flash_program)
 
 	firmware = fopen(fw_filename, "r+b");
 	if (firmware == NULL)
+	{
+		LOG_INFO("Failed to open file.");
 		return ERROR_COMMAND_ARGUMENT_INVALID;
+	}
 
 	fseek(firmware, 0, SEEK_END);
 	fw_size = ftell(firmware) + 2; // Space required in flash = firmware size + firmware size value (2 bytes)
