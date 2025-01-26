@@ -35,7 +35,7 @@
 #define TRIGON     0xAull
 #define TRIGOFF    0xBull
 
-#define MAX_STEPS 0x8000
+#define MAX_STEPS 0x1000
 
 #define PERIPH_ADDR       (MEM_DMEMX_ADDR + 0xE000)
   #define SPI_ADDR          (PERIPH_ADDR + 0x0020)

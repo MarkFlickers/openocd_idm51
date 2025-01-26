@@ -464,6 +464,7 @@ static int idm51_init_arch_info(struct target *target, struct idm51_common *idm5
 static int idm51_configure_break_unit(struct target *target)
 {
 	struct idm51_common *idm51 = target_to_idm51(target);
+	int retval = ERROR_OK;
 
 	if (idm51->bp_scanned)
 		return ERROR_OK;
@@ -478,12 +479,13 @@ static int idm51_configure_break_unit(struct target *target)
 	for (int i = 0; i < BPOINTS_AMOUNT; i++)
 	{
 		idm51->breakpoints[i].bp_number = i;
+		retval = idm51_write_core_resource(target, TRIGOFF, i, 0, NULL);
 	}
 
 	idm51->bp_scanned = true;
 	idm51->triggered_pc = NONE_ADR;
 
-	return ERROR_OK;
+	return retval;
 }
 
 static int idm51_target_create(struct target *target, Jim_Interp *interp)
@@ -1175,7 +1177,7 @@ static int idm51_step(struct target *target,
 	}
 
 	// LOG_DEBUG("%s %08X %08X", __func__, current, (unsigned) address);
-	
+
 	err = idm51_restore_context(target, 0);
 	if (err != ERROR_OK)
 		return err;
@@ -1188,7 +1190,7 @@ static int idm51_step(struct target *target,
 	idm51_debug_read_register(target, IDM51_PC, &curr_pc);
 	if (current == 0)
 	{
-		while(((target_addr_t)curr_pc != address) && steps < MAX_STEPS)
+		while (((target_addr_t)curr_pc != address) && steps < MAX_STEPS)
 		{
 			err = idm51_core_step(target);
 			if (err != ERROR_OK)
@@ -1518,6 +1520,101 @@ static int idm51_remove_breakpoint(struct target *target, struct breakpoint *bre
 
 			breakpoint->is_set = 0;
 		}
+	}
+
+	return retval;
+}
+
+static int idm51_add_watchpoint(struct target *target, struct watchpoint *watchpoint)
+{
+	struct idm51_common *idm51 = target_to_idm51(target);
+	int retval = ERROR_OK;
+
+	LOG_INFO("add WPID: %d, Address: %#08llx",
+			 watchpoint->unique_id,
+			 watchpoint->address);
+
+	if (target->state != TARGET_HALTED)
+	{
+		LOG_WARNING("target not halted");
+		return ERROR_TARGET_NOT_HALTED;
+	}
+
+	/* did we already set this breakpoint? */
+	if (watchpoint->is_set)
+		return ERROR_OK;
+
+	if ((watchpoint->address > MEM_DMEMX_ADDR) && ((watchpoint->address < MEM_DMEM_ADDR)))
+	{
+		if ((idm51->breakpoints[6].is_bp_used) == 0)
+		{
+			idm51->breakpoints[6].is_bp_used = 1;
+			idm51->breakpoints[6].bp_value = watchpoint->address;
+
+			retval = idm51_write_core_resource(target, TRIGON, 6, watchpoint->address, NULL);
+			if (retval != ERROR_OK)
+				return retval;
+
+			watchpoint->is_set = 1;
+			return retval;
+		}
+	}
+	else if ((watchpoint->address > MEM_DMEM_ADDR) && ((watchpoint->address < (MEM_DMEM_ADDR + MEM_DMEM_SIZE))))
+	{
+		if ((idm51->breakpoints[7].is_bp_used) == 0)
+		{
+			idm51->breakpoints[7].is_bp_used = 1;
+			idm51->breakpoints[7].bp_value = watchpoint->address;
+
+			retval = idm51_write_core_resource(target, TRIGON, 7, watchpoint->address, NULL);
+			if (retval != ERROR_OK)
+				return retval;
+
+			watchpoint->is_set = 1;
+			return retval;
+		}
+	}
+
+	LOG_ERROR("Unable to set watchpoint at address %#08llx" PRIx32
+			  " - only %d comparator available ",
+			  watchpoint->address, 1);
+	return ERROR_OK;
+}
+
+static int idm51_remove_watchpoint(struct target *target, struct watchpoint *watchpoint)
+{
+	int retval = ERROR_OK;
+	struct idm51_common *idm51 = target_to_idm51(target);
+
+	LOG_INFO("rem WPID: %d, Address: %#08llx",
+			 watchpoint->unique_id,
+			 watchpoint->address);
+
+	// if(idm51->core_hangup == 1)
+	// 	return ERROR_TARGET_NOT_HALTED;
+
+	if (!watchpoint->is_set)
+	{
+		LOG_WARNING("breakpoint not set");
+		return ERROR_OK;
+	}
+	if ((watchpoint->address > MEM_DMEMX_ADDR) && ((watchpoint->address < MEM_DMEM_ADDR)))
+	{
+		idm51->breakpoints[6].is_bp_used = 0;
+		retval = idm51_write_core_resource(target, TRIGOFF, 6, watchpoint->address, NULL);
+		if (retval != ERROR_OK)
+			return retval;
+
+		watchpoint->is_set = 0;
+	}
+	else if ((watchpoint->address > MEM_DMEM_ADDR) && ((watchpoint->address < (MEM_DMEM_ADDR + MEM_DMEM_SIZE))))
+	{
+		idm51->breakpoints[7].is_bp_used = 0;
+		retval = idm51_write_core_resource(target, TRIGOFF, 7, watchpoint->address, NULL);
+		if (retval != ERROR_OK)
+			return retval;
+
+		watchpoint->is_set = 0;
 	}
 
 	return retval;
@@ -2428,6 +2525,8 @@ struct target_type idm51_target = {
 
 	.add_breakpoint = idm51_add_breakpoint,
 	.remove_breakpoint = idm51_remove_breakpoint,
+	.add_watchpoint = idm51_add_watchpoint,
+	.remove_watchpoint = idm51_remove_watchpoint,
 
 	.commands = idm51_command_handlers,
 	.target_create = idm51_target_create,
