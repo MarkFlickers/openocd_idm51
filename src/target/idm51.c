@@ -1276,12 +1276,12 @@ static int idm51_assert_reset(struct target *target)
 	struct idm51_common *idm51 = target_to_idm51(target);
 	uint8_t spi_load_en = ((uint8_t)(idm51->is_load_enabled)) & 1;
 
-	LOG_INFO("%s", __func__);
+	//LOG_INFO("%s", __func__);
 
 	// стоп на всех
-	err = idm51_core_halt(target);
-	if (err != ERROR_OK)
-		return err;
+	//err = idm51_core_halt(target);
+	//if (err != ERROR_OK)
+	//	return err;
 
 	// RESETON
 	LOG_INFO("%s", "Assert Reset task");
@@ -1296,7 +1296,7 @@ static int idm51_assert_reset(struct target *target)
 	register_cache_invalidate(idm51->core_cache);
 
 	target->state = TARGET_RESET;
-	target->debug_reason = DBG_REASON_NOTHALTED;
+	target->debug_reason = DBG_REASON_DBGRQ;
 	// target->debug_reason = DBG_REASON_NOTHALTED;
 
 	if (target->reset_halt)
@@ -1322,11 +1322,13 @@ static int idm51_deassert_reset(struct target *target)
 	   let poll detect the stall */
 	if (target->reset_halt)
 		return ERROR_OK;
+	else
+		err = idm51_core_resume(target);
 
 	/* Instead of going through saving context, polling and
 	   then resuming target again just clear stall and proceed. */
 	target->state = TARGET_RUNNING;
-	return idm51_core_resume(target);
+	return err;
 
 	// err = idm51_poll(target);
 	// if (err != ERROR_OK)
@@ -2282,7 +2284,7 @@ COMMAND_HANDLER(idm51_reset)
 	if (err != ERROR_OK)
 		return err;
 
-	err = idm51_print_status(target);
+	//err = idm51_print_status(target);
 
 	err = idm51_deassert_reset(target);
 	if (err != ERROR_OK)
@@ -2353,6 +2355,11 @@ COMMAND_HANDLER(idm51_program)
 	else
 		LOG_INFO("No size specified. Whole file will be written to target");
 
+	target->reset_halt = true;
+	err = idm51_assert_reset(target);
+	if (err != ERROR_OK)
+		return err;
+
 	while (((s = getc(firmware)) != EOF) && (adr < 0x10000) && (adr < size))
 	{
 		char b = s & 0xFF;
@@ -2366,15 +2373,6 @@ COMMAND_HANDLER(idm51_program)
 	}
 
 	fclose(firmware);
-
-
-	err = idm51_assert_reset(target);
-	if (err != ERROR_OK)
-		return err;
-
-	err = idm51_core_halt(target);
-	if (err != ERROR_OK)
-		return err;
 
 	err = idm51_deassert_reset(target);
 	if (err != ERROR_OK)
