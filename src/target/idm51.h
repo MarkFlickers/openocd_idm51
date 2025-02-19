@@ -25,9 +25,9 @@
 	#define MEM_DMEMX   0x1ull
 	#define MEM_DMEM    0x2ull
 		#define MEM_IMEMX_ADDR  0x00000
-      #define MEM_IMEMX_SIZE  0x10000
+      #define MEM_IMEMX_SIZE  0x02000
 		#define MEM_DMEMX_ADDR  0x10000
-      #define MEM_DMEMX_SIZE  0x10000
+      #define MEM_DMEMX_SIZE  0x02000
 		#define MEM_DMEM_ADDR   0x20000
       #define MEM_DMEM_SIZE   0x00080
 #define READST     0x8ull

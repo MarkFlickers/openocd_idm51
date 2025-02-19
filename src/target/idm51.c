@@ -21,53 +21,7 @@ static const struct
 	uint32_t eame;
 } idm51_regs[] = {
 	{PC_REGNUM, "pc", 16, 0x00000000}
-	/* {E_R0_REGNUM,  "r0",  32, 0x00000000},
-	{E_R1_REGNUM,  "r1",  32, 0x00000001},
-	{E_R2_REGNUM,  "r2",  32, 0x00000002},
-	{E_R3_REGNUM,  "r3",  32, 0x00000003},
-	{E_R4_REGNUM,  "r4",  32, 0x00000004},
-	{E_R5_REGNUM,  "r5",  32, 0x00000005},
-	{E_R6_REGNUM,  "r6",  32, 0x00000006},
-	{E_R7_REGNUM,  "r7",  32, 0x00000007},
-	{E_R8_REGNUM,  "r8",  32, 0x00000008},
-	{E_R9_REGNUM,  "r9",  32, 0x00000009},
-	{E_R10_REGNUM, "r10", 32, 0x0000000a},
-	{E_R11_REGNUM, "r11", 32, 0x0000000b},
-	{E_R12_REGNUM, "r12", 32, 0x0000000c},
-	{E_R13_REGNUM, "r13", 32, 0x0000000d},
-	{E_R14_REGNUM, "r14", 32, 0x0000000e},
-	{E_R15_REGNUM, "r15", 32, 0x0000000f},
-	{E_R16_REGNUM, "r16", 32, 0x00000010},
-	{E_R17_REGNUM, "r17", 32, 0x00000011},
-	{E_R18_REGNUM, "r18", 32, 0x00000012},
-	{E_R19_REGNUM, "r19", 32, 0x00000013},
-	{E_R20_REGNUM, "r20", 32, 0x00000014},
-	{E_R21_REGNUM, "r21", 32, 0x00000015},
-	{E_R22_REGNUM, "r22", 32, 0x00000016},
-	{E_R23_REGNUM, "r23", 32, 0x00000017},
-	{E_R24_REGNUM, "r24", 32, 0x00000018},
-	{E_R25_REGNUM, "r25", 32, 0x00000019},
-	{E_R26_REGNUM, "r26", 32, 0x0000001a},
-	{E_R27_REGNUM, "r27", 32, 0x0000001b},
-	{E_R28_REGNUM, "r28", 32, 0x0000001c},
-	{E_R29_REGNUM, "r29", 32, 0x0000001d},
-	{E_R30_REGNUM, "r30", 32, 0x0000001e},
-	{E_R31_REGNUM, "r31", 32, 0x0000001f},
-	{E_S0_REGNUM,  "s0",  32, 0x00000020},
-	{E_S1_REGNUM,  "s1",  32, 0x00000021},
-	{E_S2_REGNUM,  "s2",  32, 0x00000022},
-	{E_S3_REGNUM,  "s3",  32, 0x00000023},
-	{E_S4_REGNUM,  "s4",  32, 0x00000024},
-	{E_S5_REGNUM,  "s5",  32, 0x00000025},
-	{E_S6_REGNUM,  "s6",  32, 0x00000026},
-	{E_S7_REGNUM,  "s7",  32, 0x00000027},
-	{E_S8_REGNUM,  "s8",  32, 0x00000028},
-	{E_S9_REGNUM,  "s9",  32, 0x00000029},
-	{E_S10_REGNUM, "s10", 32, 0x0000002a},
-	{E_S11_REGNUM, "s11", 32, 0x0000002b},
-	{E_S12_REGNUM, "s12", 32, 0x0000002c},
-	{E_S13_REGNUM, "s13", 32, 0x0000002d}, */
-
+	
 	//{E_FINAL,   "", 32, 0xffffffff}
 };
 
@@ -85,7 +39,6 @@ int idm51_print_status(struct target *target)
 {
 	char Core_Status_String[256] = "status:";
 	char Trigg_String[256] = "active triggers:";
-	// uint8_t first = 1;
 
 	uint32_t status_reg;
 	int err = ERROR_OK;
@@ -1966,7 +1919,7 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 			idm51_spi_communication(target, send_data, 1, rec_data); // Send Full chip erase command
 		}
 
-		LOG_INFO("Successfully erased %d KB", (idm51->ext_flash.capactiy / 1024));
+		//LOG_INFO("Successfully erased %d KB", (idm51->ext_flash.capactiy / 1024));
 		to_be_erased = idm51->ext_flash.capactiy;
 	}
 	else
@@ -2132,12 +2085,11 @@ static int idm51_winbond_flash_erase(struct target *target, uint32_t erase_size)
 			curr_address += (4 * 1024);
 			sectors_4k--;
 		}
-
-		LOG_INFO("Successfully erased %d KB", to_be_erased / 1024);
 	}
 
 	idm51->ext_flash.bytes_erased = to_be_erased;
 
+	LOG_INFO("Successfully erased %d KB", idm51->ext_flash.bytes_erased / 1024);
 	return retval;
 }
 
@@ -2488,6 +2440,134 @@ COMMAND_HANDLER(idm51_flash_program)
 	return err;
 }
 
+COMMAND_HANDLER(idm51_memory_check)
+{
+	int err = ERROR_OK;
+	char test_arr[max(MEM_IMEMX_SIZE, MEM_DMEMX_SIZE)] = {0};
+	char byte = 0;
+	target_addr_t adr = 0;
+
+	struct target *target = get_current_target(CMD_CTX);
+
+	//=============== IMEMX Checking ========================
+	LOG_INFO("Generating random array for IMEMX...");
+	srand(time(NULL));
+	for (uint32_t i = 0; i < MEM_IMEMX_SIZE; i++)
+	{
+		test_arr[i] = (char)rand();
+	}
+	LOG_INFO("Array generated. Writing to IMEMX...");
+	adr = MEM_IMEMX_ADDR;
+	err = idm51_write_memory(target, adr, 8, MEM_IMEMX_SIZE, test_arr);
+	if (err != ERROR_OK)
+	{
+		LOG_INFO("Failed to write IMEMX.");
+		return err;
+	}
+	LOG_INFO("IMEMX write completed. Reading from IMEMX...");
+
+	uint32_t corrupted_bytes_cnt = 0;
+	for(uint32_t i = 0; i < MEM_IMEMX_SIZE; i++)
+	{
+		err = idm51_read_memory_byte(target, adr + i, &byte);
+		if(err != ERROR_OK)
+		{
+			LOG_INFO("Failed to read from IMEMX");
+			return err;
+		}
+		if(byte != test_arr[i])
+		{
+			//corrupted[corrupted_bytes_cnt] = i;
+			corrupted_bytes_cnt++;
+			LOG_INFO("Byte %d. Expected %d, read %d", i, test_arr[i], byte);
+		}
+	}
+	if(corrupted_bytes_cnt)
+	{
+		LOG_INFO("%d corrupted byte(s) were found in IMEMX.", corrupted_bytes_cnt);
+	}
+	else
+		LOG_INFO("IMEMX successfully passed test");
+
+	//===================== DMEMX Checking ========================
+	LOG_INFO("Generating random array for DMEMX...");
+	for (uint32_t i = 0; i < MEM_DMEMX_SIZE; i++)
+	{
+		test_arr[i] = (char)rand();
+	}
+	LOG_INFO("Array generated. Writing to DMEMX...");
+	adr = MEM_DMEMX_ADDR;
+	err = idm51_write_memory(target, adr, 8, MEM_DMEMX_SIZE, test_arr);
+	if (err != ERROR_OK)
+	{
+		LOG_INFO("Failed to write DMEMX.");
+		return err;
+	}
+	LOG_INFO("DMEMX write completed. Reading from DMEMX...");
+
+	corrupted_bytes_cnt = 0;
+	for(uint32_t i = 0; i < MEM_DMEMX_SIZE; i++)
+	{
+		err = idm51_read_memory_byte(target, adr + i, &byte);
+		if(err != ERROR_OK)
+		{
+			LOG_INFO("Failed to read from DMEMX");
+			return err;
+		}
+		if(byte != test_arr[i])
+		{
+			corrupted_bytes_cnt++;
+			LOG_INFO("Byte %d. Expected %d, read %d", i, test_arr[i], byte);
+		}
+	}
+	if(corrupted_bytes_cnt)
+	{
+		LOG_INFO("%d corrupted byte(s) were found in DMEMX.", corrupted_bytes_cnt);
+	}
+	else
+		LOG_INFO("DMEMX successfully passed test");
+	
+	//===================== DMEM Checking ========================
+	LOG_INFO("Generating random array for DMEM...");
+	for (uint32_t i = 0; i < MEM_DMEM_SIZE; i++)
+	{
+		test_arr[i] = (char)rand();
+	}
+	LOG_INFO("Array generated. Writing to DMEM...");
+	adr = MEM_DMEM_ADDR;
+	err = idm51_write_memory(target, adr, 8, MEM_DMEM_SIZE, test_arr);
+	if (err != ERROR_OK)
+	{
+		LOG_INFO("Failed to write DMEM.");
+		return err;
+	}
+	LOG_INFO("DMEM write completed. Reading from DMEM...");
+
+	corrupted_bytes_cnt = 0;
+	for(uint32_t i = 0; i < MEM_DMEM_SIZE; i++)
+	{
+		err = idm51_read_memory_byte(target, adr + i, &byte);
+		if(err != ERROR_OK)
+		{
+			LOG_INFO("Failed to read from DMEM");
+			return err;
+		}
+		if(byte != test_arr[i])
+		{
+			corrupted_bytes_cnt++;
+			LOG_INFO("Byte %d. Expected %d, read %d", i, test_arr[i], byte);
+		}
+	}
+	if(corrupted_bytes_cnt)
+	{
+		LOG_INFO("%d corrupted byte(s) were found in DMEM.", corrupted_bytes_cnt);
+	}
+	else
+		LOG_INFO("DMEM successfully passed test");
+
+	return err;
+}
+
 static const struct command_registration idm51_command_handlers[] = {
 	{
 		.name = "idm51_reset",
@@ -2501,7 +2581,7 @@ static const struct command_registration idm51_command_handlers[] = {
 		.handler = idm51_fill_zero,
 		.mode = COMMAND_EXEC,
 		.help = "idm51_fill_zero <adr> <size>",
-		.usage = "<adr> <size>",
+		.usage = "idm51_fill_zero <adr> <size>",
 	},
 	{
 		.name = "idm51_program",
@@ -2515,14 +2595,21 @@ static const struct command_registration idm51_command_handlers[] = {
 		.handler = idm51_flash_erase,
 		.mode = COMMAND_EXEC,
 		.help = "This command scans for SPI flash connected to CS0, and erases it if compatible. Size is specified in Kilobytes",
-		.usage = "<size in KB>",
+		.usage = "idm51_flash_erase <size in KB>",
 	},
 	{
 		.name = "idm51_flash_program",
 		.handler = idm51_flash_program,
 		.mode = COMMAND_EXEC,
 		.help = "This command writes specified bin file to SPI flash connected to CS0 if compatible. Will perform flash erase first if is wasn't done before.",
-		.usage = "<bin file>",
+		.usage = "idm51_flash_program <bin file>",
+	},
+	{
+		.name = "idm51_memory_check",
+		.handler = idm51_memory_check,
+		.mode = COMMAND_EXEC,
+		.help = "This command performs memory test for IMEMX, DMEMX, DMEM.",
+		.usage = "idm51_memory_check",
 	},
 
 	COMMAND_REGISTRATION_DONE};
