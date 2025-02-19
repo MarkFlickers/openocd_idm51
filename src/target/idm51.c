@@ -2458,7 +2458,7 @@ COMMAND_HANDLER(idm51_memory_check)
 	}
 	LOG_INFO("Array generated. Writing to IMEMX...");
 	adr = MEM_IMEMX_ADDR;
-	err = idm51_write_memory(target, adr, 8, MEM_IMEMX_SIZE, test_arr);
+	err = idm51_write_memory(target, adr, 1, MEM_IMEMX_SIZE, test_arr);
 	if (err != ERROR_OK)
 	{
 		LOG_INFO("Failed to write IMEMX.");
@@ -2479,7 +2479,7 @@ COMMAND_HANDLER(idm51_memory_check)
 		{
 			//corrupted[corrupted_bytes_cnt] = i;
 			corrupted_bytes_cnt++;
-			LOG_INFO("Byte %d. Expected %d, read %d", i, test_arr[i], byte);
+			LOG_INFO("Byte %d. Expected %#0.2x, read %#0.2x", i, test_arr[i], byte);
 		}
 	}
 	if(corrupted_bytes_cnt)
@@ -2497,7 +2497,7 @@ COMMAND_HANDLER(idm51_memory_check)
 	}
 	LOG_INFO("Array generated. Writing to DMEMX...");
 	adr = MEM_DMEMX_ADDR;
-	err = idm51_write_memory(target, adr, 8, MEM_DMEMX_SIZE, test_arr);
+	err = idm51_write_memory(target, adr, 1, MEM_DMEMX_SIZE, test_arr);
 	if (err != ERROR_OK)
 	{
 		LOG_INFO("Failed to write DMEMX.");
@@ -2517,7 +2517,7 @@ COMMAND_HANDLER(idm51_memory_check)
 		if(byte != test_arr[i])
 		{
 			corrupted_bytes_cnt++;
-			LOG_INFO("Byte %d. Expected %d, read %d", i, test_arr[i], byte);
+			LOG_INFO("Byte %d. Expected %#0.2x, read %#0.2x", i, test_arr[i], byte);
 		}
 	}
 	if(corrupted_bytes_cnt)
@@ -2535,7 +2535,7 @@ COMMAND_HANDLER(idm51_memory_check)
 	}
 	LOG_INFO("Array generated. Writing to DMEM...");
 	adr = MEM_DMEM_ADDR;
-	err = idm51_write_memory(target, adr, 8, MEM_DMEM_SIZE, test_arr);
+	err = idm51_write_memory(target, adr, 1, MEM_DMEM_SIZE, test_arr);
 	if (err != ERROR_OK)
 	{
 		LOG_INFO("Failed to write DMEM.");
@@ -2555,7 +2555,7 @@ COMMAND_HANDLER(idm51_memory_check)
 		if(byte != test_arr[i])
 		{
 			corrupted_bytes_cnt++;
-			LOG_INFO("Byte %d. Expected %d, read %d", i, test_arr[i], byte);
+			LOG_INFO("Byte %d. Expected %#0.2x, read %#0.2x", i, test_arr[i], byte);
 		}
 	}
 	if(corrupted_bytes_cnt)
