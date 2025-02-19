@@ -13,7 +13,16 @@
             }
         },
         {
-            "label": "MSYS Configure",
+            "label": "MSYS Configure Release",
+            "type": "shell",
+            "command": "'./configure --enable-internal-jimtcl --enable-static --disable-shared LDFLAGS=\"-static\" --disable-werror --enable-ftdi'",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "MSYS Configure Debug",
             "type": "shell",
             "command": "'./configure CFLAGS=\"-ggdb -O0 -g3\" --enable-internal-jimtcl --enable-static --disable-werror --enable-ftdi --disable-stlink --disable-ti-icdi --disable-ulink --disable-angie --disable-usb-blaster-2 --disable-ft232r --disable-vsllink --disable-xds110 --disable-cmsis-dap-v2 --disable-osbdm --disable-opendous --disable-armjtagew --disable-rlink --disable-usbprog --disable-cmsis-dap --disable-nulink --disable-kitprog --disable-usb-blaster --disable-presto --disable-openjtag --disable-linuxgpiod --disable-buspirate --disable-dummy --disable-xlnx-pcie-xvc --disable-jlink --disable-jtag_vpi'",
             "group": {
@@ -24,7 +33,7 @@
         {
             "label": "MSYS Make",
             "type": "shell",
-            "command": "'make -j12'",
+            "command": "'make -j24'",
             "group": {
                 "kind": "build",
                 "isDefault": true
