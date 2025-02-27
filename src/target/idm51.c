@@ -998,10 +998,10 @@ static int idm51_halt(struct target *target)
 }
 
 static int idm51_resume(struct target *target,
-						int current,
+						_Bool current,
 						target_addr_t address,
-						int handle_breakpoints,
-						int debug_execution)
+						_Bool handle_breakpoints,
+						_Bool debug_execution)
 {
 	int err;
 	struct idm51_common *idm51 = target_to_idm51(target);
@@ -1125,9 +1125,9 @@ static int idm51_resume(struct target *target,
 // }
 
 static int idm51_step(struct target *target,
-					  int current,
+					  _Bool current,
 					  target_addr_t address,
-					  int handle_breakpoints)
+					  _Bool handle_breakpoints)
 {
 	LOG_DEBUG("%s", __func__);
 
