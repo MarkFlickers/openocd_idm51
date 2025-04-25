@@ -15,7 +15,7 @@ else
     exit 1
 fi
 
-WITH_SUBMODULES=0
+WITH_SUBMODULES=1
 
 case "$#" in
     0) ;;
