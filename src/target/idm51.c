@@ -441,7 +441,7 @@ static int idm51_configure_break_unit(struct target *target)
 	return retval;
 }
 
-static int idm51_target_create(struct target *target, Jim_Interp *interp)
+static int idm51_target_create(struct target *target)
 {
 	LOG_INFO("target->coreid - %X", target->coreid);
 
